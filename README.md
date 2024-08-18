@@ -752,7 +752,9 @@ The unit specifies the time span unit. Allowed values are `day`, `month`, and `y
 
 You can provide a date layout using the [Go time documentation](https://pkg.go.dev/time#pkg-constants) to `format` the output value.
 
-The `date` parameter is optional, and if not provided, the current date (`'now'`) is assumed. When format is specified, the `date` must be in the same layout. You can reference other date values in the same row by providing the column name in `date`.
+The `date` parameter is optional, and if not provided, the current date (`'now'`) is assumed. When format is specified, the `date` must be in the same layout. 
+
+You can reference other date values in the same row by providing the column name in `date`.
 
 ```yaml
   - name: relative_from_now
@@ -769,6 +771,22 @@ The `date` parameter is optional, and if not provided, the current date (`'now'`
       unit: year
       after: -4
       before: 4
+      format: '2006-01-02'
+  - name: relative_from_other_column
+    type: rel_date
+    processor:
+      date: 'other_column_name'
+      unit: year
+      after: -4
+      before: 4
+      format: '2006-01-02'
+  - name: before_after_from_other_column
+    type: rel_date
+    processor:
+      date: 'now'
+      unit: year
+      after: 'some_column'
+      before: 'another_column'
       format: '2006-01-02'
 ```
 

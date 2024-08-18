@@ -14,8 +14,8 @@ func TestGeneratorRelativeDateColumn(t *testing.T) {
 	cases := []struct {
 		name       string
 		unit       string
-		after      int
-		before     int
+		after      interface{}
+		before     interface{}
 		format     string
 		date       string
 		exp_before time.Time
@@ -73,13 +73,22 @@ func TestGeneratorRelativeDateColumn(t *testing.T) {
 			exp_before: time.Date(2020, 12, 29, 0, 0, 0, 0, time.Local),
 			exp_after:  time.Date(2020, 12, 21, 0, 0, 0, 0, time.Local),
 		},
+		{
+			name:       "before/after from another column",
+			unit:       day,
+			after:      "after_count",
+			before:     "before_count",
+			date:       "now",
+			exp_before: now.AddDate(0, 0, 4),
+			exp_after:  now.AddDate(0, 0, -4),
+		},
 	}
 
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			table := model.Table{
 				Name:    "table",
-				Columns: []model.Column{{Name: "id"}, {Name: "order_date"}},
+				Columns: []model.Column{{Name: "id"}, {Name: "order_date"}, {Name: "after_count"}, {Name: "before_count"}},
 				Count:   1,
 			}
 			column := model.Column{
@@ -88,10 +97,12 @@ func TestGeneratorRelativeDateColumn(t *testing.T) {
 			files := map[string]model.CSVFile{
 				"table": {
 					Name:   "table",
-					Header: []string{"id", "order_date"},
+					Header: []string{"id", "order_date", "after_count", "before_count"},
 					Lines: [][]string{
 						{"1", "2"},
 						{"2020-12-25", "2024-12-25"},
+						{"-3", "-3"},
+						{"3", "3"},
 					},
 				},
 			}

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math/rand/v2"
 	"regexp"
+	"strconv"
 	"time"
 
 	"github.com/codingconcepts/dg/internal/pkg/model"
@@ -17,11 +18,14 @@ const (
 )
 
 type RelDateGenerator struct {
-	Date   string `yaml:"date"`
-	Unit   string `yaml:"unit"`
-	After  int    `yaml:"after"`
-	Before int    `yaml:"before"`
-	Format string `yaml:"format"`
+	Date   string      `yaml:"date"`
+	Unit   string      `yaml:"unit"`
+	After  interface{} `yaml:"after"`
+	Before interface{} `yaml:"before"`
+	Format string      `yaml:"format"`
+
+	_after  int
+	_before int
 }
 
 func findColumnIndex(t model.Table, name string) int {
@@ -33,7 +37,26 @@ func findColumnIndex(t model.Table, name string) int {
 	return -1
 }
 
+func resolveIntValue(value interface{}, t model.Table, i int, files map[string]model.CSVFile, fieldName string) (int, error) {
+	if intValue, ok := value.(int); ok {
+		return intValue, nil
+	} else if col, ok := value.(string); ok {
+		idx := findColumnIndex(t, col)
+		if idx == -1 {
+			return 0, fmt.Errorf("%s column not found: %s", fieldName, col)
+		}
+		val, err := strconv.Atoi(files[t.Name].Lines[idx][i])
+		if err != nil {
+			return 0, fmt.Errorf("error parsing %s column value: %w", fieldName, err)
+		}
+		return val, nil
+	} else {
+		return 0, fmt.Errorf("error parsing %s value: %v", fieldName, value)
+	}
+}
+
 func (g RelDateGenerator) Generate(t model.Table, c model.Column, files map[string]model.CSVFile) error {
+
 	if g.Format == "" {
 		g.Format = "2006-01-02"
 	}
@@ -61,14 +84,22 @@ func (g RelDateGenerator) Generate(t model.Table, c model.Column, files map[stri
 			return len(a) > len(b)
 		}))
 	}
+	var err error
 	var lines []string
 	for i := 0; i < t.Count; i++ {
 		if ref_column > -1 {
-			var err error
 			ref_date, err = time.Parse(g.Format, files[t.Name].Lines[ref_column][i])
 			if err != nil {
 				return fmt.Errorf("error parsing date: %w", err)
 			}
+		}
+		g._after, err = resolveIntValue(g.After, t, i, files, "After")
+		if err != nil {
+			return err
+		}
+		g._before, err = resolveIntValue(g.Before, t, i, files, "Before")
+		if err != nil {
+			return err
 		}
 		s := g.generate(ref_date)
 		lines = append(lines, s)
@@ -78,10 +109,10 @@ func (g RelDateGenerator) Generate(t model.Table, c model.Column, files map[stri
 }
 
 func (g RelDateGenerator) generate(reference time.Time) string {
-	if g.After > g.Before {
-		g.After, g.Before = g.Before, g.After
+	if g._after > g._before {
+		g._after, g._before = g._before, g._after
 	}
-	offset := rand.IntN(g.Before-g.After+1) + g.After
+	offset := rand.IntN(g._before-g._after+1) + g._after
 	switch g.Unit {
 	case day:
 		return reference.AddDate(0, 0, offset).Format(g.Format)

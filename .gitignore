@@ -33,3 +33,9 @@ scratchpad
 # temporary files/folders created during debugging
 __debug*
 .debug
+
+#macos
+.DS_Store
+._*
+
+.aider*
