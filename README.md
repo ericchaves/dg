@@ -780,6 +780,14 @@ You can reference other date values in the same row by providing the column name
       after: -4
       before: 4
       format: '2006-01-02'
+  - name: relative_from_other_table_column
+    type: rel_date
+    processor:
+      date: match('orders','client_id', 1 ,'ordered_at')
+      unit: year
+      after: -4
+      before: 4
+      format: '2006-01-02'
   - name: before_after_from_other_column
     type: rel_date
     processor:

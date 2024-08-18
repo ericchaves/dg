@@ -18,21 +18,12 @@ type ExprGenerator struct {
 }
 
 type ExpressionContext struct {
-	Files map[string]model.CSVFile
+	Table  model.Table
+	Format string
+	Files  map[string]model.CSVFile
 }
 
-func (g ExprGenerator) Generate(t model.Table, c model.Column, files map[string]model.CSVFile) error {
-	if g.Expression == "" {
-		return fmt.Errorf("expression cannot be empty")
-	}
-
-	if t.Count == 0 {
-		t.Count = len(lo.MaxBy(files[t.Name].Lines, func(a, b []string) bool {
-			return len(a) > len(b)
-		}))
-	}
-
-	ctx := &ExpressionContext{Files: files}
+func (ctx ExpressionContext) NewEvaluableExpression(expression string) (*govaluate.EvaluableExpression, error) {
 	functions := map[string]govaluate.ExpressionFunction{
 		"match": func(args ...interface{}) (interface{}, error) {
 			if len(args) != 4 {
@@ -80,9 +71,9 @@ func (g ExprGenerator) Generate(t model.Table, c model.Column, files map[string]
 				return data.AddDate(years, months, days), nil
 			case "string":
 				digits := regexp.MustCompile(`(\d)+`)
-				match := digits.FindAllString(g.Format, -1)
+				match := digits.FindAllString(ctx.Format, -1)
 				if len(match) >= 3 {
-					data, err = time.Parse(g.Format, args[3].(string))
+					data, err = time.Parse(ctx.Format, args[3].(string))
 				} else {
 					data, err = time.Parse("2006-01-02", args[3].(string))
 				}
@@ -94,21 +85,39 @@ func (g ExprGenerator) Generate(t model.Table, c model.Column, files map[string]
 			return "", fmt.Errorf("error parsing date")
 		},
 	}
+	return govaluate.NewEvaluableExpressionWithFunctions(expression, functions)
+}
 
-	expression, err := govaluate.NewEvaluableExpressionWithFunctions(g.Expression, functions)
+func (ctx ExpressionContext) EvaluateExpression(expression *govaluate.EvaluableExpression, cursor int) (interface{}, error) {
+	table := ctx.Files[ctx.Table.Name]
+	columns := len(table.Header)
+	parameters := make(map[string]interface{}, columns)
+	for c := range columns {
+		s := table.Lines[c][cursor]
+		parameters[table.Header[c]] = coerce(s)
+	}
+	return expression.Evaluate(parameters)
+}
+
+func (g ExprGenerator) Generate(t model.Table, c model.Column, files map[string]model.CSVFile) error {
+	if g.Expression == "" {
+		return fmt.Errorf("expression cannot be empty")
+	}
+
+	if t.Count == 0 {
+		t.Count = len(lo.MaxBy(files[t.Name].Lines, func(a, b []string) bool {
+			return len(a) > len(b)
+		}))
+	}
+	ctx := &ExpressionContext{Files: files, Format: g.Format, Table: t}
+	expression, err := ctx.NewEvaluableExpression(g.Expression)
 	if err != nil {
 		return fmt.Errorf("error parsing expression: %w", err)
 	}
+
 	var lines []string
 	for i := 0; i < t.Count; i++ {
-		table := files[t.Name]
-		columns := len(table.Header)
-		parameters := make(map[string]interface{}, columns)
-		for c := range columns {
-			s := table.Lines[c][i]
-			parameters[table.Header[c]] = coerce(s)
-		}
-		result, err := expression.Evaluate(parameters)
+		result, err := ctx.EvaluateExpression(expression, i)
 		if err != nil {
 			return fmt.Errorf("error evaluating expression %w", err)
 		}

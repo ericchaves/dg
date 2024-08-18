@@ -23,9 +23,6 @@ type RelDateGenerator struct {
 	After  interface{} `yaml:"after"`
 	Before interface{} `yaml:"before"`
 	Format string      `yaml:"format"`
-
-	_after  int
-	_before int
 }
 
 func findColumnIndex(t model.Table, name string) int {
@@ -37,10 +34,10 @@ func findColumnIndex(t model.Table, name string) int {
 	return -1
 }
 
-func resolveIntValue(value interface{}, t model.Table, i int, files map[string]model.CSVFile, fieldName string) (int, error) {
-	if intValue, ok := value.(int); ok {
+func resolveIntValue(source interface{}, t model.Table, i int, files map[string]model.CSVFile, fieldName string) (int, error) {
+	if intValue, ok := source.(int); ok {
 		return intValue, nil
-	} else if col, ok := value.(string); ok {
+	} else if col, ok := source.(string); ok {
 		idx := findColumnIndex(t, col)
 		if idx == -1 {
 			return 0, fmt.Errorf("%s column not found: %s", fieldName, col)
@@ -51,28 +48,54 @@ func resolveIntValue(value interface{}, t model.Table, i int, files map[string]m
 		}
 		return val, nil
 	} else {
-		return 0, fmt.Errorf("error parsing %s value: %v", fieldName, value)
+		return 0, fmt.Errorf("error parsing %s value: %v", fieldName, source)
 	}
+}
+
+func resolveDateValue(source string, format string, t model.Table, i int, files map[string]model.CSVFile) (*time.Time, error) {
+	var err error
+	result := time.Now()
+	if source == "" || source == "now" {
+		return &result, nil
+	}
+	matched, _ := regexp.MatchString(`^match`, source)
+	if matched {
+		// match value from other table
+		ctx := &ExpressionContext{Files: files, Table: t, Format: format}
+		expression, err := ctx.NewEvaluableExpression(source)
+		if err != nil {
+			return nil, fmt.Errorf("error parsing expression: %w", err)
+		}
+		result, err := ctx.EvaluateExpression(expression, i)
+		if err != nil {
+			return nil, fmt.Errorf("error evaluating expression %w", err)
+		}
+		if getType(result) == "time.Time" {
+			return result.(*time.Time), nil
+		} else {
+			return nil, fmt.Errorf("expression %s is not a date: %v", source, result)
+		}
+	}
+
+	matched, _ = regexp.MatchString(`^[a-zA-Z]\w+$`, source)
+	if matched {
+		ref_column := findColumnIndex(t, source)
+		if ref_column == -1 {
+			return nil, fmt.Errorf("column not found: %s", source)
+		}
+		source = files[t.Name].Lines[ref_column][i]
+	}
+	result, err = time.Parse(format, source)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing date: %w", err)
+	}
+	return &result, nil
 }
 
 func (g RelDateGenerator) Generate(t model.Table, c model.Column, files map[string]model.CSVFile) error {
 
 	if g.Format == "" {
 		g.Format = "2006-01-02"
-	}
-	ref_date := time.Now()
-	ref_column := -1
-	if g.Date != "" && g.Date != "now" {
-		var err error
-		matched, _ := regexp.MatchString(`^[a-zA-Z]\w+$`, g.Date)
-		if matched {
-			ref_column = findColumnIndex(t, g.Date)
-		} else {
-			ref_date, err = time.Parse(g.Format, g.Date)
-			if err != nil {
-				return fmt.Errorf("error parsing date: %w", err)
-			}
-		}
 	}
 
 	if g.Unit != day && g.Unit != month && g.Unit != year {
@@ -84,35 +107,32 @@ func (g RelDateGenerator) Generate(t model.Table, c model.Column, files map[stri
 			return len(a) > len(b)
 		}))
 	}
-	var err error
 	var lines []string
 	for i := 0; i < t.Count; i++ {
-		if ref_column > -1 {
-			ref_date, err = time.Parse(g.Format, files[t.Name].Lines[ref_column][i])
-			if err != nil {
-				return fmt.Errorf("error parsing date: %w", err)
-			}
-		}
-		g._after, err = resolveIntValue(g.After, t, i, files, "After")
+		reference, err := resolveDateValue(g.Date, g.Format, t, i, files)
 		if err != nil {
 			return err
 		}
-		g._before, err = resolveIntValue(g.Before, t, i, files, "Before")
+		after, err := resolveIntValue(g.After, t, i, files, "After")
 		if err != nil {
 			return err
 		}
-		s := g.generate(ref_date)
+		before, err := resolveIntValue(g.Before, t, i, files, "Before")
+		if err != nil {
+			return err
+		}
+		s := g.generate(*reference, before, after)
 		lines = append(lines, s)
 	}
 	AddTable(t, c.Name, lines, files)
 	return nil
 }
 
-func (g RelDateGenerator) generate(reference time.Time) string {
-	if g._after > g._before {
-		g._after, g._before = g._before, g._after
+func (g RelDateGenerator) generate(reference time.Time, before int, after int) string {
+	if after > before {
+		after, before = before, after
 	}
-	offset := rand.IntN(g._before-g._after+1) + g._after
+	offset := rand.IntN(before-after+1) + after
 	switch g.Unit {
 	case day:
 		return reference.AddDate(0, 0, offset).Format(g.Format)
