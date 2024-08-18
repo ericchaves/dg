@@ -752,9 +752,9 @@ The unit specifies the time span unit. Allowed values are `day`, `month`, and `y
 
 You can provide a date layout using the [Go time documentation](https://pkg.go.dev/time#pkg-constants) to `format` the output value.
 
-The `date` parameter is optional, and if not provided, the current date (`'now'`) is assumed. When format is specified, the `date` must be in the same layout. 
+The `date` parameter is optional and if not provided the current date (`'now'`) is assumed. When format is specified, the `date` must be in the same layout. 
 
-You can reference other date values in the same row by providing the column name in `date`.
+You can pass a go expression on `date`,`before` and `after` parameters, which allows reference other values in the same row by providing the column name , use the match function to match other tables values or perform some complex calculations.
 
 ```yaml
   - name: relative_from_now
@@ -776,14 +776,6 @@ You can reference other date values in the same row by providing the column name
     type: rel_date
     processor:
       date: 'other_column_name'
-      unit: year
-      after: -4
-      before: 4
-      format: '2006-01-02'
-  - name: relative_from_other_table_column
-    type: rel_date
-    processor:
-      date: match('orders','client_id', 1 ,'ordered_at')
       unit: year
       after: -4
       before: 4

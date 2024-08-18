@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"math/rand/v2"
 	"regexp"
-	"strconv"
 	"time"
 
 	"github.com/codingconcepts/dg/internal/pkg/model"
@@ -25,31 +24,41 @@ type RelDateGenerator struct {
 	Format string      `yaml:"format"`
 }
 
-func findColumnIndex(t model.Table, name string) int {
-	for i, column := range t.Columns {
-		if column.Name == name {
+func findColumnIndex(table model.Table, columnName string) int {
+	for i, column := range table.Columns {
+		if column.Name == columnName {
 			return i
 		}
 	}
 	return -1
 }
 
-func resolveIntValue(source interface{}, t model.Table, i int, files map[string]model.CSVFile, fieldName string) (int, error) {
-	if intValue, ok := source.(int); ok {
-		return intValue, nil
-	} else if col, ok := source.(string); ok {
-		idx := findColumnIndex(t, col)
-		if idx == -1 {
-			return 0, fmt.Errorf("%s column not found: %s", fieldName, col)
-		}
-		val, err := strconv.Atoi(files[t.Name].Lines[idx][i])
-		if err != nil {
-			return 0, fmt.Errorf("error parsing %s column value: %w", fieldName, err)
-		}
-		return val, nil
-	} else {
-		return 0, fmt.Errorf("error parsing %s value: %v", fieldName, source)
+func resolveIntValue(source interface{}, t model.Table, cursor int, files map[string]model.CSVFile) (*int, error) {
+	if val, ok := source.(int); ok {
+		return &val, nil
 	}
+	if str, ok := source.(string); ok {
+		ctx := &ExpressionContext{Files: files, Table: t, Format: ""}
+		expression, err := ctx.NewEvaluableTableExpression(str)
+		if err != nil {
+			return nil, fmt.Errorf("error parsing expression: %w", err)
+		}
+		result, err := ctx.EvaluateTableExpression(expression, cursor)
+		if err != nil {
+			return nil, fmt.Errorf("error evaluating expression %w", err)
+		}
+		switch v := result.(type) {
+		case int:
+			return &v, nil
+		case float32:
+		case float64:
+			i := int(v)
+			return &i, nil
+		default:
+			return nil, fmt.Errorf("expression result %s is not of type int: %v", source, result)
+		}
+	}
+	return nil, fmt.Errorf("invalid expression or column not found: %s", source)
 }
 
 func resolveDateValue(source string, format string, t model.Table, i int, files map[string]model.CSVFile) (*time.Time, error) {
@@ -62,11 +71,11 @@ func resolveDateValue(source string, format string, t model.Table, i int, files 
 	if matched {
 		// match value from other table
 		ctx := &ExpressionContext{Files: files, Table: t, Format: format}
-		expression, err := ctx.NewEvaluableExpression(source)
+		expression, err := ctx.NewEvaluableTableExpression(source)
 		if err != nil {
 			return nil, fmt.Errorf("error parsing expression: %w", err)
 		}
-		result, err := ctx.EvaluateExpression(expression, i)
+		result, err := ctx.EvaluateTableExpression(expression, i)
 		if err != nil {
 			return nil, fmt.Errorf("error evaluating expression %w", err)
 		}
@@ -113,15 +122,15 @@ func (g RelDateGenerator) Generate(t model.Table, c model.Column, files map[stri
 		if err != nil {
 			return err
 		}
-		after, err := resolveIntValue(g.After, t, i, files, "After")
+		after, err := resolveIntValue(g.After, t, i, files)
 		if err != nil {
 			return err
 		}
-		before, err := resolveIntValue(g.Before, t, i, files, "Before")
+		before, err := resolveIntValue(g.Before, t, i, files)
 		if err != nil {
 			return err
 		}
-		s := g.generate(*reference, before, after)
+		s := g.generate(*reference, *before, *after)
 		lines = append(lines, s)
 	}
 	AddTable(t, c.Name, lines, files)

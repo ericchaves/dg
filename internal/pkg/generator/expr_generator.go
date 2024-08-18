@@ -23,7 +23,7 @@ type ExpressionContext struct {
 	Files  map[string]model.CSVFile
 }
 
-func (ctx ExpressionContext) NewEvaluableExpression(expression string) (*govaluate.EvaluableExpression, error) {
+func (ctx ExpressionContext) NewEvaluableTableExpression(expression string) (*govaluate.EvaluableExpression, error) {
 	functions := map[string]govaluate.ExpressionFunction{
 		"match": func(args ...interface{}) (interface{}, error) {
 			if len(args) != 4 {
@@ -88,7 +88,7 @@ func (ctx ExpressionContext) NewEvaluableExpression(expression string) (*govalua
 	return govaluate.NewEvaluableExpressionWithFunctions(expression, functions)
 }
 
-func (ctx ExpressionContext) EvaluateExpression(expression *govaluate.EvaluableExpression, cursor int) (interface{}, error) {
+func (ctx ExpressionContext) EvaluateTableExpression(expression *govaluate.EvaluableExpression, cursor int) (interface{}, error) {
 	table := ctx.Files[ctx.Table.Name]
 	columns := len(table.Header)
 	parameters := make(map[string]interface{}, columns)
@@ -110,14 +110,14 @@ func (g ExprGenerator) Generate(t model.Table, c model.Column, files map[string]
 		}))
 	}
 	ctx := &ExpressionContext{Files: files, Format: g.Format, Table: t}
-	expression, err := ctx.NewEvaluableExpression(g.Expression)
+	expression, err := ctx.NewEvaluableTableExpression(g.Expression)
 	if err != nil {
 		return fmt.Errorf("error parsing expression: %w", err)
 	}
 
 	var lines []string
 	for i := 0; i < t.Count; i++ {
-		result, err := ctx.EvaluateExpression(expression, i)
+		result, err := ctx.EvaluateTableExpression(expression, i)
 		if err != nil {
 			return fmt.Errorf("error evaluating expression %w", err)
 		}
