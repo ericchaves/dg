@@ -11,9 +11,9 @@ import (
 )
 
 const (
-	day   = "Day"
-	month = "Month"
-	year  = "Year"
+	day   = "day"
+	month = "month"
+	year  = "year"
 )
 
 type RelDateGenerator struct {
@@ -115,6 +115,12 @@ func (g RelDateGenerator) Generate(t model.Table, c model.Column, files map[stri
 		t.Count = len(lo.MaxBy(files[t.Name].Lines, func(a, b []string) bool {
 			return len(a) > len(b)
 		}))
+	}
+	if g.Before == nil || g.Before == "" {
+		g.Before = 0
+	}
+	if g.After == nil || g.After == "" {
+		g.After = 0
 	}
 	var lines []string
 	for i := 0; i < t.Count; i++ {
