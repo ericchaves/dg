@@ -712,20 +712,17 @@ tables:
           format: '%.2f'
 ```
 
-The full list of custom functions available are:
-- match(sourceTable string, sourceColumn string, sourceValue string, matchColumn string)
-- add_date(years int, months int, days int, data string)
-- rand_int() [from math/rand package](https://pkg.go.dev/math/rand)
-- rand_int31() [from math/rand package](https://pkg.go.dev/math/rand)
-- rand_int63() [from math/rand package](https://pkg.go.dev/math/rand)
-- rand_float32() [from math/rand package](https://pkg.go.dev/math/rand)
-- rand_float64() [from math/rand package](https://pkg.go.dev/math/rand)
-- rand_expfloat64() [from math/rand package](https://pkg.go.dev/math/rand)
-- rand_normfloat64() [from math/rand package](https://pkg.go.dev/math/rand)
-- rand_intn(n int) [from math/rand package](https://pkg.go.dev/math/rand)
-- rand_intn31(n int) [from math/rand package](https://pkg.go.dev/math/rand)
-- rand_intn63(n int) [from math/rand package](https://pkg.go.dev/math/rand)
-- rand_perm(n int) [from math/rand package](https://pkg.go.dev/math/rand)
+The full list of custom functions available inside expressions are:
+
+- match(sourceTable string, sourceColumn string, sourceValue string, matchColumn string) *returns the `matchColumn` from `sourceTable` where `sourceColumn` has `SourceValue`*
+- add_date(years int, months int, days int, date string) *Adds the specified numbers of `years`,`months` and `days` to the given `date`*
+- max(n1, n2, ...) *returns the maximum value from the list of numbers*
+- min(n1, n2, ...) *return the minimum value from the list of numbers*
+- rand() *returns a pseudo-random non-negative integer*
+- rand(n int) *returns a pseudo-random integer between 0 and `n`. `n` must be positive*
+- rand_range(min int, max int) *returns a pseudo-random integer between `min` and `max`, inclusive. Accepts both positive and negative values*
+- rand_float64() *returns a pseudo-random positive float64, as in the [math/rand package](https://pkg.go.dev/math/rand)*
+- rand_perm(n int) *returns a pseudo-random permutation of the numbers [0, `n`), as in the [math/rand package](https://pkg.go.dev/math/rand)*
 
 #### rand
 

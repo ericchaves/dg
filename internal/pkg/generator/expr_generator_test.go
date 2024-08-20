@@ -143,44 +143,32 @@ func TestGeneratorExprRandFunctions(t *testing.T) {
 		expression string
 	}{
 		{
-			name:       "rand_int",
-			expression: "rand_int()",
+			name:       "rand",
+			expression: "rand()",
 		},
 		{
-			name:       "rand_int31",
-			expression: "rand_int31()",
+			name:       "rand with max value",
+			expression: "rand(10)",
 		},
 		{
-			name:       "rand_int63",
-			expression: "rand_int63()",
+			name:       "rand with negative number",
+			expression: "randn(-10)",
 		},
 		{
-			name:       "rand_float32",
-			expression: "rand_float32()",
+			name:       "rand_range",
+			expression: "rand_range(-10,parameter)",
+		},
+		{
+			name:       "rand_range with all negatives",
+			expression: "rand_range(-30,parameter * -1)",
+		},
+		{
+			name:       "rand with value from other cell",
+			expression: "rand(parameter)",
 		},
 		{
 			name:       "rand_float64",
 			expression: "rand_float64()",
-		},
-		{
-			name:       "rand_expfloat64",
-			expression: "rand_expfloat64()",
-		},
-		{
-			name:       "rand_normfloat64",
-			expression: "rand_normfloat64()",
-		},
-		{
-			name:       "rand_intn",
-			expression: "rand_intn(parameter)",
-		},
-		{
-			name:       "rand_intn31",
-			expression: "rand_intn31(parameter)",
-		},
-		{
-			name:       "rand_intn63",
-			expression: "rand_intn63(parameter)",
 		},
 		{
 			name:       "rand_perm",
@@ -217,6 +205,87 @@ func TestGeneratorExprRandFunctions(t *testing.T) {
 			last_value, ok := lo.Last(last_line)
 			assert.True(t, ok)
 			assert.NotEmpty(t, last_value)
+		})
+	}
+}
+
+func TestGeneratorExprMinMaxFunctions(t *testing.T) {
+	cases := []struct {
+		name       string
+		expression string
+		expected   string
+	}{
+		{
+			name:       "min integers",
+			expression: "min(3,5,0)",
+			expected:   "0",
+		},
+		{
+			name:       "min with float",
+			expression: "min(5,0.3,2, 21.2345)",
+			expected:   "0.3",
+		},
+		{
+			name:       "min with negatives",
+			expression: "min(5,-3,0.3,7,-0.5)",
+			expected:   "-3",
+		},
+		{
+			name:       "min with references",
+			expression: "min(5,-3,0.3,7,-0.5, parameter)",
+			expected:   "-3",
+		},
+		{
+			name:       "max integers",
+			expression: "max(3,5,0)",
+			expected:   "5",
+		},
+		{
+			name:       "max with float",
+			expression: "max(5,0.3,2, 21.2345)",
+			expected:   "21.2345",
+		},
+		{
+			name:       "max with negatives",
+			expression: "max(5,-3,0.3,7,-0.5)",
+			expected:   "7",
+		},
+		{
+			name:       "max with references",
+			expression: "max(5,-3,0.3,7,-0.5, parameter)",
+			expected:   "10",
+		},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			table := model.Table{
+				Name:    "table",
+				Columns: []model.Column{{Name: "id"}, {Name: "case"}, {Name: "parameter"}},
+				Count:   1,
+			}
+			column := model.Column{
+				Name: "random_value",
+			}
+			files := map[string]model.CSVFile{
+				"table": {
+					Name:   "table",
+					Header: []string{"id", "parameter"},
+					Lines: [][]string{
+						{"0"},
+						{"10"},
+					},
+				},
+			}
+			g := ExprGenerator{
+				Expression: c.expression,
+			}
+			err := g.Generate(table, column, files)
+			assert.Nil(t, err)
+			last_line, ok := lo.Last(files["table"].Lines)
+			assert.True(t, ok)
+			last_value, ok := lo.Last(last_line)
+			assert.True(t, ok)
+			assert.Equal(t, last_value, c.expected)
 		})
 	}
 }
