@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/codingconcepts/dg/internal/pkg/model"
+	"github.com/samber/lo"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -134,4 +135,88 @@ func TestGeneratorExprDateFunctionsFormatted(t *testing.T) {
 	err := g.Generate(table, column, files)
 	assert.Nil(t, err)
 	assert.Equal(t, files["table"].Lines[3][0], "2026/01/26")
+}
+
+func TestGeneratorExprRandFunctions(t *testing.T) {
+	cases := []struct {
+		name       string
+		expression string
+	}{
+		{
+			name:       "rand_int",
+			expression: "rand_int()",
+		},
+		{
+			name:       "rand_int31",
+			expression: "rand_int31()",
+		},
+		{
+			name:       "rand_int63",
+			expression: "rand_int63()",
+		},
+		{
+			name:       "rand_float32",
+			expression: "rand_float32()",
+		},
+		{
+			name:       "rand_float64",
+			expression: "rand_float64()",
+		},
+		{
+			name:       "rand_expfloat64",
+			expression: "rand_expfloat64()",
+		},
+		{
+			name:       "rand_normfloat64",
+			expression: "rand_normfloat64()",
+		},
+		{
+			name:       "rand_intn",
+			expression: "rand_intn(parameter)",
+		},
+		{
+			name:       "rand_intn31",
+			expression: "rand_intn31(parameter)",
+		},
+		{
+			name:       "rand_intn63",
+			expression: "rand_intn63(parameter)",
+		},
+		{
+			name:       "rand_perm",
+			expression: "rand_perm(parameter)",
+		},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			table := model.Table{
+				Name:    "table",
+				Columns: []model.Column{{Name: "id"}, {Name: "case"}, {Name: "parameter"}},
+				Count:   1,
+			}
+			column := model.Column{
+				Name: "random_value",
+			}
+			files := map[string]model.CSVFile{
+				"table": {
+					Name:   "table",
+					Header: []string{"id", "parameter"},
+					Lines: [][]string{
+						{"0"},
+						{"10"},
+					},
+				},
+			}
+			g := ExprGenerator{
+				Expression: c.expression,
+			}
+			err := g.Generate(table, column, files)
+			assert.Nil(t, err)
+			last_line, ok := lo.Last(files["table"].Lines)
+			assert.True(t, ok)
+			last_value, ok := lo.Last(last_line)
+			assert.True(t, ok)
+			assert.NotEmpty(t, last_value)
+		})
+	}
 }

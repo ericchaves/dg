@@ -2,6 +2,7 @@ package generator
 
 import (
 	"fmt"
+	"math/rand"
 	"reflect"
 	"regexp"
 	"strconv"
@@ -24,10 +25,11 @@ type ExpressionContext struct {
 }
 
 func (ctx ExpressionContext) NewEvaluableTableExpression(expression string) (*govaluate.EvaluableExpression, error) {
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	functions := map[string]govaluate.ExpressionFunction{
 		"match": func(args ...interface{}) (interface{}, error) {
 			if len(args) != 4 {
-				return "", fmt.Errorf("match function expects 4 arguments")
+				return "", fmt.Errorf("match function expects 4 arguments: match(sourceTable, sourceColumn, sourceValue, matchColumn)")
 			}
 			sourceTable, sourceColumn, matchColumn := args[0].(string), args[1].(string), args[3].(string)
 			sourceValue := fmt.Sprintf("%v", args[2])
@@ -83,6 +85,67 @@ func (ctx ExpressionContext) NewEvaluableTableExpression(expression string) (*go
 				return data.AddDate(years, months, days), nil
 			}
 			return "", fmt.Errorf("error parsing date")
+		},
+		"rand_int": func(args ...interface{}) (interface{}, error) {
+			return r.Int(), nil
+		},
+		"rand_int31": func(args ...interface{}) (interface{}, error) {
+			return r.Int31(), nil
+		},
+		"rand_int63": func(args ...interface{}) (interface{}, error) {
+			return r.Int63(), nil
+		},
+		"rand_float32": func(args ...interface{}) (interface{}, error) {
+			return r.Float32(), nil
+		},
+		"rand_float64": func(args ...interface{}) (interface{}, error) {
+			return r.Float64(), nil
+		},
+		"rand_expfloat64": func(args ...interface{}) (interface{}, error) {
+			return r.ExpFloat64(), nil
+		},
+		"rand_normfloat64": func(args ...interface{}) (interface{}, error) {
+			return r.NormFloat64(), nil
+		},
+		"rand_intn": func(args ...interface{}) (interface{}, error) {
+			if len(args) != 1 {
+				return "", fmt.Errorf("rand_intn function expects 1 argument: rand_intn(n int")
+			}
+			n, ok := args[0].(float64)
+			if ok {
+				return r.Intn(int(n)), nil
+			}
+			return "", fmt.Errorf("argument %v cannot be converted to int", args[0])
+		},
+		"rand_intn31": func(args ...interface{}) (interface{}, error) {
+			if len(args) != 1 {
+				return "", fmt.Errorf("rand_intn31 function expects 1 argument: rand_intn31(n int32")
+			}
+			n, ok := args[0].(float64)
+			if ok {
+				return r.Int31n(int32(n)), nil
+			}
+			return "", fmt.Errorf("argument %v cannot be converted to int32", args[0])
+		},
+		"rand_intn63": func(args ...interface{}) (interface{}, error) {
+			if len(args) != 1 {
+				return "", fmt.Errorf("rand_intn63 function expects 1 argument: rand_intn63(n int64")
+			}
+			n, ok := args[0].(float64)
+			if ok {
+				return r.Int63n(int64(n)), nil
+			}
+			return "", fmt.Errorf("argument %v cannot be converted to int364", args[0])
+		},
+		"rand_perm": func(args ...interface{}) (interface{}, error) {
+			if len(args) != 1 {
+				return "", fmt.Errorf("rand_perm function expects 1 argument: rand_perm(n int")
+			}
+			n, ok := args[0].(float64)
+			if ok {
+				return r.Perm(int(n)), nil
+			}
+			return "", fmt.Errorf("argument %v cannot be converted to int", args[0])
 		},
 	}
 	return govaluate.NewEvaluableExpressionWithFunctions(expression, functions)

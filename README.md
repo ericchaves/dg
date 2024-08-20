@@ -712,6 +712,21 @@ tables:
           format: '%.2f'
 ```
 
+The full list of custom functions available are:
+- match(sourceTable string, sourceColumn string, sourceValue string, matchColumn string)
+- add_date(years int, months int, days int, data string)
+- rand_int() [from math/rand package](https://pkg.go.dev/math/rand)
+- rand_int31() [from math/rand package](https://pkg.go.dev/math/rand)
+- rand_int63() [from math/rand package](https://pkg.go.dev/math/rand)
+- rand_float32() [from math/rand package](https://pkg.go.dev/math/rand)
+- rand_float64() [from math/rand package](https://pkg.go.dev/math/rand)
+- rand_expfloat64() [from math/rand package](https://pkg.go.dev/math/rand)
+- rand_normfloat64() [from math/rand package](https://pkg.go.dev/math/rand)
+- rand_intn(n int) [from math/rand package](https://pkg.go.dev/math/rand)
+- rand_intn31(n int) [from math/rand package](https://pkg.go.dev/math/rand)
+- rand_intn63(n int) [from math/rand package](https://pkg.go.dev/math/rand)
+- rand_perm(n int) [from math/rand package](https://pkg.go.dev/math/rand)
+
 #### rand
 
 `rand` generator allows generation of random values between a given range providing a `low`and `high` values (both inclusive). Supported types are `int`, `date` and `float64`. 
