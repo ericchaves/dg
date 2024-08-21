@@ -254,6 +254,14 @@ func generateTable(t model.Table, files map[string]model.CSVFile, tt ui.TimerFun
 			if err := g.Generate(t, col, files); err != nil {
 				return fmt.Errorf("running expr process for %s.%s: %w", t.Name, col.Name, err)
 			}
+		case "case":
+			var g generator.CaseGenerator
+			if err := col.Generator.UnmarshalFunc(&g); err != nil {
+				return fmt.Errorf("parsing expr process for %s: %w", col.Name, err)
+			}
+			if err := g.Generate(t, col, files); err != nil {
+				return fmt.Errorf("running expr process for %s.%s: %w", t.Name, col.Name, err)
+			}
 		}
 	}
 

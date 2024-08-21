@@ -1,0 +1,51 @@
+tables:
+  - name: persons
+    count: 100
+    columns:
+      - name: person_id
+        type: range
+        processor:
+          type: int
+          from: 1
+          step: 1
+      - name: age
+        type: rand
+        processor:
+          type: int
+          low: 16
+          high: 80
+      - name: gender
+        type: gen
+        processor:
+          value: ${gender}
+      - name: greeting
+        type: case
+        processor:
+          - when: age <= 5 && gender == 'male'
+            value: 'Little guy'
+          - when: age <= 5 && gender == 'female'
+            value: 'Little girl'
+          - when: age > 5 && age <= 10 && gender == 'male'
+            value: 'Buddy'
+          - when: age > 5 && age <= 10 && gender == 'female'
+            value: 'Sweetie'
+          - when: age > 10 && age <= 15 && gender == 'male'
+            value: "'Hey, young man'"
+          - when: age > 10 && age <= 15 && gender == 'female'
+            value: "'Hey, young lady'"
+          - when: age > 15 && age <= 20 && gender == 'male'
+            value: "'Whats up, dude?'"
+          - when: age > 15 && age <= 20 && gender == 'female'
+            value: "'Whats up, girl?'"
+          - when: age > 20 && age <= 30 && gender == 'male'
+            value: "'Hey, man'"
+          - when: age > 20 && age <= 30 && gender == 'female'
+            value: "'Hey, there'"
+          - when: age > 30 && age <= 40 && gender == 'male'
+            value: "'Hello, mister'"
+          - when: age > 30 && age <= 40 && gender == 'female'
+            value: "'Hello, madam'"
+          - when: age > 40 && gender == 'male'
+            value: "'Good to see you, sir'"
+          - when: age > 40 && gender == 'female'
+            value: "'Good to see you, madam'"

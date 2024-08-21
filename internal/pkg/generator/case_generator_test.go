@@ -27,43 +27,41 @@ func TestCaseGenerator(t *testing.T) {
 		},
 	}
 	g := CaseGenerator{
-		Values: []CaseCondition{
-			{
-				When:  "age <= 10 && gender == 'male'",
-				Value: "'little guy!'",
-			},
-			{
-				When:  "age <= 10 && gender == 'female'",
-				Value: "'little girl!'",
-			},
-			{
-				When:  "age > 10 && age <= 20 && gender == 'male'",
-				Value: "'Hey, young man!'",
-			},
-			{
-				When:  "age > 10 && age <= 20 && gender == 'female'",
-				Value: "'Hey, young lady!'",
-			},
-			{
-				When:  "age > 20 && age <= 50 && gender == 'male'",
-				Value: "'Hello, sir!'",
-			},
-			{
-				When:  "age > 20 && age <= 50 && gender == 'female'",
-				Value: "'Hello, ma'am!'",
-			},
-			{
-				When:  "age > 50 && gender == 'male'",
-				Value: "'Good day, sir!'",
-			},
-			{
-				When:  "age > 50 && gender == 'female'",
-				Value: "'Good day, ma'am!'",
-			},
-			{
-				When:  "true",
-				Value: "'Yo, Stranger!'",
-			},
+		{
+			When:  "age <= 10 && gender == 'male'",
+			Value: "'little guy!'",
+		},
+		{
+			When:  "age <= 10 && gender == 'female'",
+			Value: "'little girl!'",
+		},
+		{
+			When:  "age > 10 && age <= 20 && gender == 'male'",
+			Value: "'Hey, young man!'",
+		},
+		{
+			When:  "age > 10 && age <= 20 && gender == 'female'",
+			Value: "'Hey, young lady!'",
+		},
+		{
+			When:  "age > 20 && age <= 50 && gender == 'male'",
+			Value: "'Hello, sir!'",
+		},
+		{
+			When:  "age > 20 && age <= 50 && gender == 'female'",
+			Value: "'Hello, madam!'",
+		},
+		{
+			When:  "age > 50 && gender == 'male'",
+			Value: "'Good day, sir!'",
+		},
+		{
+			When:  "age > 50 && gender == 'female'",
+			Value: "'Good day, madam!'",
+		},
+		{
+			When:  "true",
+			Value: "'Yo, Stranger!'",
 		},
 	}
 	err := g.Generate(table, column, files)
@@ -77,9 +75,9 @@ func TestCaseGenerator(t *testing.T) {
 		"Hey, young man!",
 		"Hey, young lady!",
 		"Hello, sir!",
-		"Hello, ma'am!",
-		"Good day, sir!",
-		"Good day, ma'am!",
+		"Hello, madam!",
+		"Hello, sir!",
+		"Good day, madam!",
 	}
 
 	assert.Equal(t, len(expectedGreetings), len(generatedGreetings), "Number of generated greetings should match expected")
