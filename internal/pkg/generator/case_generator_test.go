@@ -69,4 +69,22 @@ func TestCaseGenerator(t *testing.T) {
 	err := g.Generate(table, column, files)
 	assert.Nil(t, err)
 
+	// Verify the generated greetings
+	generatedGreetings := files["table"].Lines[3]
+	expectedGreetings := []string{
+		"little guy!",
+		"little girl!",
+		"Hey, young man!",
+		"Hey, young lady!",
+		"Hello, sir!",
+		"Hello, ma'am!",
+		"Good day, sir!",
+		"Good day, ma'am!",
+	}
+
+	assert.Equal(t, len(expectedGreetings), len(generatedGreetings), "Number of generated greetings should match expected")
+
+	for i, greeting := range generatedGreetings {
+		assert.Equal(t, expectedGreetings[i], greeting, "Greeting at index %d should match expected", i)
+	}
 }
