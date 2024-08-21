@@ -1,0 +1,34 @@
+tables:
+  - name: orders
+    count: 5
+    columns:    
+      - name: order_id
+        type: range
+        processor:
+          type: int
+          from: 1
+          step: 1    
+      - name: item_count
+        type: rand
+        processor:
+          type: int
+          low: 10
+          high: 20
+  - name: order_items
+    columns:
+      - name: id
+        type: range
+        processor:
+          type: int
+          from: 1
+          step: 1
+      - name: order_id
+        type: fk 
+        processor:
+          reference: orders 
+          column: order_id
+          repeat: parent.item_count
+      - name: item_name
+        type: gen
+        processor:
+          value: ${breakfast}

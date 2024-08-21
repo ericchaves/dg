@@ -26,6 +26,7 @@ A fast data generator that produces CSV files from generated relational data.
     - [expr](#expr)
     - [rand](#rand)
     - [rel_date](#rel_date)
+    - [case](#case)
 1. [Inputs](#inputs)
    - [csv](#csv)
 1. [Functions](#functions)
@@ -634,7 +635,7 @@ Alternatively to UUIDs you cans use [`cuid2`](https://pkg.go.dev/github.com/nred
 
 #### expr
 
-The `expr` generator enable arithmetic/strings expressions evaluation using [govaluate](https://pkg.go.dev/github.com/vjeantet/govaluate). 
+The `expr` generator enable arithmetic/strings expressions evaluation using [expr-lang](https://expr-lang.org/docs/language-definition). 
 
 ```yaml
   - name: silly_value
@@ -800,6 +801,23 @@ You can pass a go expression on `date`,`before` and `after` parameters, which al
       after: 'some_column'
       before: 'another_column'
       format: '2006-01-02'
+```
+#### case
+
+The `case` generator evaluates a set of conditions composed of `When` and `Value` expressions.
+Each condition is evaluated in order, and when the first `When` expression evaluates to `true` its `Value` is evaluated to produce the column value.
+All functionalities of the [expr generator](#expr) can be used in the `When` and `Value` expressions.
+
+```yaml
+- name: greeting
+  type: case
+  processor:
+    - when: age <= 5 && gender == 'male'
+      value: 'Little guy'
+    - when: age <= 5 && gender == 'female'
+      value: 'Little girl'
+    - when: 'true'
+      value: 'Hi'
 ```
 
 ### Inputs
@@ -1010,7 +1028,7 @@ Thanks to the maintainers of the following fantastic packages, whose code this t
 - [go-yaml/yaml](https://github.com/go-yaml/yaml)
 - [stretchr/testify](https://github.com/stretchr/testify/assert)
 - [martinusso/go-docs](https://github.com/martinusso/go-docs)
-- [Knetic/govaluate](https://github.com/Knetic/govaluate)
+- [expr-lang](https://expr-lang.org/)
 - [nrednav/cuid2 ](https://github.com/nrednav/cuid2)
 
 ### Todos
