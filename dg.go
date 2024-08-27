@@ -418,3 +418,7 @@ func (realClock) Now() time.Time {
 func (realClock) Since(t time.Time) time.Duration {
 	return time.Since(t)
 }
+// Generator interface for all generator types
+type Generator interface {
+	Generate(t model.Table, col model.Column, files map[string]model.CSVFile) error
+}
