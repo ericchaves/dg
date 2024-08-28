@@ -2,14 +2,8 @@ package generator
 
 import (
 	"fmt"
-	"math"
-	"math/rand"
-	"reflect"
-	"regexp"
-	"strconv"
 	"time"
 
-	"github.com/Knetic/govaluate"
 	"github.com/codingconcepts/dg/internal/pkg/model"
 	"github.com/samber/lo"
 )
@@ -17,183 +11,6 @@ import (
 type ExprGenerator struct {
 	Expression string `yaml:"expression"`
 	Format     string `yaml:"format"`
-}
-
-type ExpressionContext struct {
-	Table  model.Table
-	Format string
-	Files  map[string]model.CSVFile
-}
-
-func (ctx ExpressionContext) NewEvaluableTableExpression(expression string) (*govaluate.EvaluableExpression, error) {
-	r := rand.New(rand.NewSource(time.Now().UnixNano()))
-	functions := map[string]govaluate.ExpressionFunction{
-		"match": func(args ...interface{}) (interface{}, error) {
-			if len(args) != 4 {
-				return "", fmt.Errorf("match function expects 4 arguments: match(sourceTable string, sourceColumn string, sourceValue string, matchColumn string)")
-			}
-			sourceTable, sourceColumn, matchColumn := args[0].(string), args[1].(string), args[3].(string)
-			sourceValue := fmt.Sprintf("%v", args[2])
-			value, err := ctx.searchTable(sourceTable, sourceColumn, sourceValue, matchColumn)
-			if err != nil {
-				return nil, err
-			}
-			return coerce(value), nil
-		},
-		"add_date": func(args ...interface{}) (interface{}, error) {
-			if len(args) != 4 {
-				return "", fmt.Errorf("add_date function expects 5 arguments: add_date(years int, months int, days int, data string)")
-			}
-			years, err := strconv.Atoi(fmt.Sprintf("%v", args[0]))
-			if err != nil {
-				return "", fmt.Errorf("error parsing years: %w", err)
-			}
-			months, err := strconv.Atoi(fmt.Sprintf("%v", args[1]))
-			if err != nil {
-				return "", fmt.Errorf("error parsing months: %w", err)
-			}
-			days, err := strconv.Atoi(fmt.Sprintf("%v", args[2]))
-			if err != nil {
-				return "", fmt.Errorf("error parsing days: %w", err)
-			}
-			var data time.Time
-			tipo := getType(args[3])
-			switch tipo {
-			case "time.Time":
-				data = args[3].(time.Time)
-				return data.AddDate(years, months, days), nil
-			case "float64":
-				float, _ := args[3].(float64)
-				sec := int64(float)
-				nano := int64((float - float64(sec)) * 1e9)
-				data = time.Unix(sec, nano)
-				return data.AddDate(years, months, days), nil
-			case "int":
-				sec := int64(args[3].(int))
-				data = time.Unix(sec, 0)
-				return data.AddDate(years, months, days), nil
-			case "string":
-				digits := regexp.MustCompile(`(\d)+`)
-				match := digits.FindAllString(ctx.Format, -1)
-				if len(match) >= 3 {
-					data, err = time.Parse(ctx.Format, args[3].(string))
-				} else {
-					data, err = time.Parse("2006-01-02", args[3].(string))
-				}
-				if err != nil {
-					return "", fmt.Errorf("error parsing date: %w", err)
-				}
-				return data.AddDate(years, months, days), nil
-			}
-			return "", fmt.Errorf("error parsing date")
-		},
-		"rand": func(args ...interface{}) (interface{}, error) {
-			if len(args) == 0 {
-				return rand.Int(), nil
-			}
-			n, ok := args[0].(float64)
-			if !ok {
-				return nil, fmt.Errorf("value %s cannot be convrted to int", args[0])
-			}
-			if n <= 0 {
-				return nil, fmt.Errorf("value %s must be a positive number", args[0])
-			}
-			return r.Intn(int(n)), nil
-		},
-		"rand_float64": func(args ...interface{}) (interface{}, error) {
-			return r.Float64(), nil
-		},
-		"randn": func(args ...interface{}) (interface{}, error) {
-			if len(args) < 1 {
-				return "", fmt.Errorf("rand function expects 1 argument: randn(n int)")
-			}
-			n, ok := args[0].(float64)
-			if ok {
-				i := int(math.Floor(n))
-				a := int(math.Ceil(math.Abs(n)))
-				return rand.Intn(a+1) + i, nil
-			}
-			return "", fmt.Errorf("argument %v cannot be converted to int", args[0])
-		},
-		"rand_range": func(args ...interface{}) (interface{}, error) {
-			if len(args) < 2 {
-				return "", fmt.Errorf("rand_range function expects 2 argument: rand_range(min int, max int)")
-			}
-			min, ok := args[0].(float64)
-			if !ok {
-				return "", fmt.Errorf("argument %v cannot be converted to int", args[0])
-			}
-			minInt := int(min)
-			max, ok := args[1].(float64)
-			if !ok {
-				return "", fmt.Errorf("argument %v cannot be converted to int", args[1])
-			}
-			maxInt := int(max)
-			if minInt > maxInt {
-				minInt, maxInt = maxInt, minInt
-			}
-			return rand.Intn(maxInt-minInt+1) + minInt, nil
-		},
-		"rand_perm": func(args ...interface{}) (interface{}, error) {
-			if len(args) != 1 {
-				return "", fmt.Errorf("rand_perm function expects 1 argument: rand_perm(n int)")
-			}
-			n, ok := args[0].(float64)
-			if ok {
-				return r.Perm(int(n)), nil
-			}
-			return "", fmt.Errorf("argument %v cannot be converted to int", args[0])
-		},
-		"min": func(args ...interface{}) (interface{}, error) {
-			if len(args) < 2 {
-				return "", fmt.Errorf("min function expects at least 1 argument: min(n1, n2, ...)")
-			}
-			var min float64
-			initialized := false
-			for _, arg := range args {
-				value, ok := arg.(float64)
-				if !ok {
-					return "", fmt.Errorf("min function expects arguments that can be converted to float64")
-				}
-				if !initialized || value < min {
-					min = value
-					initialized = true
-				}
-			}
-			return min, nil
-		},
-		"max": func(args ...interface{}) (interface{}, error) {
-			if len(args) < 2 {
-				return "", fmt.Errorf("max function expects at least 1 argument: max(n1, n2, ...)")
-			}
-			var max float64
-			initialized := false
-
-			for _, arg := range args {
-				value, ok := arg.(float64)
-				if !ok {
-					return "", fmt.Errorf("max function expects arguments that can be converted to float64")
-				}
-				if !initialized || value > max {
-					max = value
-					initialized = true
-				}
-			}
-			return max, nil
-		},
-	}
-	return govaluate.NewEvaluableExpressionWithFunctions(expression, functions)
-}
-
-func (ctx ExpressionContext) EvaluateTableExpression(expression *govaluate.EvaluableExpression, cursor int) (interface{}, error) {
-	table := ctx.Files[ctx.Table.Name]
-	columns := len(table.Header)
-	parameters := make(map[string]interface{}, columns)
-	for c := range columns {
-		s := table.Lines[c][cursor]
-		parameters[table.Header[c]] = coerce(s)
-	}
-	return expression.Evaluate(parameters)
 }
 
 func (g ExprGenerator) Generate(t model.Table, c model.Column, files map[string]model.CSVFile) error {
@@ -206,15 +23,11 @@ func (g ExprGenerator) Generate(t model.Table, c model.Column, files map[string]
 			return len(a) > len(b)
 		}))
 	}
-	ctx := &ExpressionContext{Files: files, Format: g.Format, Table: t}
-	expression, err := ctx.NewEvaluableTableExpression(g.Expression)
-	if err != nil {
-		return fmt.Errorf("error parsing expression: %w", err)
-	}
-
+	ec := &ExprContext{Files: files, Format: g.Format}
 	var lines []string
 	for i := 0; i < t.Count; i++ {
-		result, err := ctx.EvaluateTableExpression(expression, i)
+		env := ec.makeEnvFromLine(t.Name, i)
+		result, err := ec.evaluate(g.Expression, env)
 		if err != nil {
 			return fmt.Errorf("error evaluating expression %w", err)
 		}
@@ -247,57 +60,4 @@ func (g ExprGenerator) Generate(t model.Table, c model.Column, files map[string]
 	}
 	AddTable(t, c.Name, lines, files)
 	return nil
-}
-
-func (tc *ExpressionContext) searchTable(sourceTable, sourceColumn, sourceValue, matchColumn string) (string, error) {
-	csvFile, exists := tc.Files[sourceTable]
-	if !exists {
-		return "", fmt.Errorf("table not found: %s", sourceTable)
-	}
-
-	sourceColumnIndex := lo.IndexOf(csvFile.Header, sourceColumn)
-	matchColumnIndex := lo.IndexOf(csvFile.Header, matchColumn)
-	if sourceColumnIndex == -1 || matchColumnIndex == -1 {
-		return "", fmt.Errorf("column not found: %s ou %s", sourceColumn, matchColumn)
-	}
-	_, index, found := lo.FindIndexOf(csvFile.Lines[sourceColumnIndex], func(item string) bool {
-		return item == sourceValue
-	})
-	if found {
-		return csvFile.Lines[matchColumnIndex][index], nil
-	}
-
-	return "", fmt.Errorf("value not found for %s in column %s", sourceValue, sourceColumn)
-}
-
-func coerce(value string) interface{} {
-	if i, err := strconv.Atoi(value); err == nil {
-		return i
-	}
-	if f, err := strconv.ParseFloat(value, 64); err == nil {
-		return f
-	}
-	if b, err := strconv.ParseBool(value); err == nil {
-		return b
-	}
-	dateFormats := []string{
-		"2006-01-02",
-		"2006-01-02 15:04:05",
-		"2006-01-02T15:04:05Z07:00",
-		"02/01/2006",
-		"02-01-2006",
-		"02/01/2006 15:04:05",
-		"02-01-2006 15:04:05",
-	}
-
-	for _, format := range dateFormats {
-		if t, err := time.Parse(format, value); err == nil {
-			return t
-		}
-	}
-	return value
-}
-
-func getType(value interface{}) string {
-	return reflect.TypeOf(value).String()
 }

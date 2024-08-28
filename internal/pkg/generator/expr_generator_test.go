@@ -38,7 +38,7 @@ func TestGeneratorExpMatchColumn(t *testing.T) {
 		},
 	}
 	g := ExprGenerator{
-		Expression: "match('products','product_id', id,'product_price') / 2.0",
+		Expression: "float(match('products','product_id', id,'product_price')) / 2.0",
 	}
 	err := g.Generate(table, column, files)
 	assert.Nil(t, err)
@@ -286,6 +286,80 @@ func TestGeneratorExprMinMaxFunctions(t *testing.T) {
 			last_value, ok := lo.Last(last_line)
 			assert.True(t, ok)
 			assert.Equal(t, last_value, c.expected)
+		})
+	}
+}
+
+func TestGeneratorExprMatchFunction(t *testing.T) {
+	cases := []struct {
+		name       string
+		expression string
+		format     string
+		expected   []string
+	}{
+		{
+			name:       "match integer field",
+			expression: "match('contracts','id', row_id , 'months')",
+			expected:   []string{"2", "3", "5"},
+		},
+		{
+			name:       "match integer field using LN cursor",
+			expression: "match('contracts','id', LN + 1, 'months')",
+			expected:   []string{"2", "3", "5"},
+		},
+		{
+			name:       "match with format float64 using LN cursor",
+			expression: "int(match('contracts','id', LN + 1, 'months')) + 0.000001",
+			format:     "%.2f",
+			expected:   []string{"2.00", "3.00", "5.00"},
+		},
+		{
+			name:       "match with date column",
+			expression: "date(match('contracts','id', LN + 1, 'enroll'), '2006-01-02')",
+			format:     "02/01/2006",
+			expected:   []string{"14/08/2023", "15/08/2023", "16/08/2023"},
+		},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+
+			table := model.Table{
+				Name:  "table",
+				Count: 3,
+			}
+
+			column := model.Column{
+				Name: "column",
+			}
+
+			files := map[string]model.CSVFile{
+				"table": {
+					Name:   "table",
+					Header: []string{"row_id"},
+					Lines: [][]string{
+						{"1", "2", "3"},
+					},
+				},
+				"contracts": {
+					Name:   "contracts",
+					Header: []string{"id", "name", "enroll", "months"},
+					Lines: [][]string{
+						{"1", "2", "3"},
+						{"jhon", "jack", "joe"},
+						{"2023-08-14", "2023-08-15", "2023-08-16"},
+						{"2", "3", "5"},
+					},
+				},
+			}
+
+			g := ExprGenerator{
+				Expression: c.expression,
+				Format:     c.format,
+			}
+			err := g.Generate(table, column, files)
+			assert.Nil(t, err)
+			assert.Equal(t, files["table"].Lines[1], c.expected)
 		})
 	}
 }

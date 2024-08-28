@@ -28,21 +28,15 @@ func (g CaseGenerator) Generate(t model.Table, c model.Column, files map[string]
 	var lines []string
 	for i := 0; i < t.Count; i++ {
 		for _, cond := range g {
-			ctx := &ExpressionContext{Files: files, Table: t, Format: ""}
-			expression, err := ctx.NewEvaluableTableExpression(cond.When)
+			ec := &ExprContext{Files: files, Format: ""}
+			rec := model.GetRecord(t.Name, i, files)
+			env := ec.makeEnv(rec)
+			result, err := ec.evaluate(cond.When, env)
 			if err != nil {
 				return fmt.Errorf("error parsing When: %s (%w)", cond.When, err)
 			}
-			result, err := ctx.EvaluateTableExpression(expression, i)
-			if err != nil {
-				return fmt.Errorf("error evaluating When: %s (%w)", cond.When, err)
-			}
 			if result.(bool) {
-				expression, err := ctx.NewEvaluableTableExpression(cond.Value)
-				if err != nil {
-					return fmt.Errorf("error parsing Value: %s (%w)", cond.Value, err)
-				}
-				value, err := ctx.EvaluateTableExpression(expression, i)
+				value, err := ec.evaluate(cond.Value, env)
 				if err != nil {
 					return fmt.Errorf("error evaluating Value: %s (%w)", cond.Value, err)
 				}

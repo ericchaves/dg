@@ -49,5 +49,5 @@ tables:
       - name: max_loan
         type: expr
         processor:
-          expression: match('persons','person_id', billing_id, 'salary') / 0.3
+          expression: float(match('persons','person_id', billing_id, 'salary')) / 0.3
           format: '%.2f'

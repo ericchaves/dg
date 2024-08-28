@@ -157,32 +157,121 @@ func generateTable(t model.Table, files map[string]model.CSVFile, tt ui.TimerFun
 		return fmt.Errorf("generating const columns: %w", err)
 	}
 
-	generators := map[string]Generator{
-		"ref":      &generator.RefGenerator{},
-		"gen":      &generator.GenGenerator{},
-		"set":      &generator.SetGenerator{},
-		"inc":      &generator.IncGenerator{},
-		"range":    &generator.RangeGenerator{},
-		"match":    &generator.MatchGenerator{},
-		"cuid2":    &generator.Cuid2Generator{},
-		"rel_date": &generator.RelDateGenerator{},
-		"rand":     &generator.RandGenerator{},
-		"expr":     &generator.ExprGenerator{},
-		"case":     &generator.CaseGenerator{},
+	// Create any foreign_key columns next
+	var fk generator.ForeignKeyGenerator
+	if err := fk.Generate(t, files); err != nil {
+		return fmt.Errorf("generating fk columns: %w", err)
 	}
 
 	for _, col := range t.Columns {
-		g, ok := generators[col.Type]
-		if !ok {
-			return fmt.Errorf("unknown generator type: %s", col.Type)
-		}
+		switch col.Type {
+		case "ref":
+			var g generator.RefGenerator
+			if err := col.Generator.UnmarshalFunc(&g); err != nil {
+				return fmt.Errorf("parsing ref process for %s.%s: %w", t.Name, col.Name, err)
+			}
+			if err := g.Generate(t, col, files); err != nil {
+				return fmt.Errorf("running ref process for %s.%s: %w", t.Name, col.Name, err)
+			}
 
-		if err := col.Generator.UnmarshalFunc(g); err != nil {
-			return fmt.Errorf("parsing %s process for %s.%s: %w", col.Type, t.Name, col.Name, err)
-		}
+		case "gen":
+			var g generator.GenGenerator
+			if err := col.Generator.UnmarshalFunc(&g); err != nil {
+				return fmt.Errorf("parsing each process for %s: %w", col.Name, err)
+			}
+			if err := g.Generate(t, col, files); err != nil {
+				return fmt.Errorf("running gen process for %s.%s: %w", t.Name, col.Name, err)
+			}
 
-		if err := g.Generate(t, col, files); err != nil {
-			return fmt.Errorf("running %s process for %s.%s: %w", col.Type, t.Name, col.Name, err)
+		case "set":
+			var g generator.SetGenerator
+			if err := col.Generator.UnmarshalFunc(&g); err != nil {
+				return fmt.Errorf("parsing set process for %s.%s: %w", t.Name, col.Name, err)
+			}
+			if err := g.Generate(t, col, files); err != nil {
+				return fmt.Errorf("running set process for %s.%s: %w", t.Name, col.Name, err)
+			}
+
+		// case "const":
+		// 	var g generator.ConstGenerator
+		// 	if err := col.Generator.UnmarshalFunc(&g); err != nil {
+		// 		return fmt.Errorf("parsing const process for %s.%s: %w", t.Name, col.Name, err)
+		// 	}
+		// 	if err := g.Generate(t, col, files); err != nil {
+		// 		return fmt.Errorf("running const process for %s.%s: %w", t.Name, col.Name, err)
+		// 	}
+
+		case "inc":
+			var g generator.IncGenerator
+			if err := col.Generator.UnmarshalFunc(&g); err != nil {
+				return fmt.Errorf("parsing each process for %s: %w", col.Name, err)
+			}
+			if err := g.Generate(t, col, files); err != nil {
+				return fmt.Errorf("running inc process for %s.%s: %w", t.Name, col.Name, err)
+			}
+
+		case "range":
+			var g generator.RangeGenerator
+			if err := col.Generator.UnmarshalFunc(&g); err != nil {
+				return fmt.Errorf("parsing range process for %s: %w", col.Name, err)
+			}
+			if err := g.Generate(t, col, files); err != nil {
+				return fmt.Errorf("running range process for %s.%s: %w", t.Name, col.Name, err)
+			}
+
+		case "match":
+			var g generator.MatchGenerator
+			if err := col.Generator.UnmarshalFunc(&g); err != nil {
+				return fmt.Errorf("parsing match process for %s: %w", col.Name, err)
+			}
+			if err := g.Generate(t, col, files); err != nil {
+				return fmt.Errorf("running match process for %s.%s: %w", t.Name, col.Name, err)
+			}
+
+		case "cuid2":
+			var g generator.Cuid2Generator
+			if err := col.Generator.UnmarshalFunc(&g); err != nil {
+				return fmt.Errorf("parsing cuid2 process for %s: %w", col.Name, err)
+			}
+			if err := g.Generate(t, col, files); err != nil {
+				return fmt.Errorf("running cuid2 process for %s.%s: %w", t.Name, col.Name, err)
+			}
+
+		case "rel_date", "relative_date":
+			var g generator.RelDateGenerator
+			if err := col.Generator.UnmarshalFunc(&g); err != nil {
+				return fmt.Errorf("parsing rel_date process for %s: %w", col.Name, err)
+			}
+			if err := g.Generate(t, col, files); err != nil {
+				return fmt.Errorf("running rel_date process for %s.%s: %w", t.Name, col.Name, err)
+			}
+
+		case "rand":
+			var g generator.RandGenerator
+			if err := col.Generator.UnmarshalFunc(&g); err != nil {
+				return fmt.Errorf("parsing rand process for %s: %w", col.Name, err)
+			}
+			if err := g.Generate(t, col, files); err != nil {
+				return fmt.Errorf("running rand process for %s.%s: %w", t.Name, col.Name, err)
+			}
+
+		case "expr":
+			var g generator.ExprGenerator
+			if err := col.Generator.UnmarshalFunc(&g); err != nil {
+				return fmt.Errorf("parsing expr process for %s: %w", col.Name, err)
+			}
+			if err := g.Generate(t, col, files); err != nil {
+				return fmt.Errorf("running expr process for %s.%s: %w", t.Name, col.Name, err)
+			}
+
+		case "case":
+			var g generator.CaseGenerator
+			if err := col.Generator.UnmarshalFunc(&g); err != nil {
+				return fmt.Errorf("parsing expr process for %s: %w", col.Name, err)
+			}
+			if err := g.Generate(t, col, files); err != nil {
+				return fmt.Errorf("running expr process for %s.%s: %w", t.Name, col.Name, err)
+			}
 		}
 	}
 
@@ -339,6 +428,7 @@ func (realClock) Now() time.Time {
 func (realClock) Since(t time.Time) time.Duration {
 	return time.Since(t)
 }
+
 // Generator interface for all generator types
 type Generator interface {
 	Generate(t model.Table, col model.Column, files map[string]model.CSVFile) error

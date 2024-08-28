@@ -2,6 +2,7 @@ package model
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -110,6 +111,93 @@ func TestUnique(t *testing.T) {
 			act := file.Unique()
 
 			assert.Equal(t, c.exp, act)
+		})
+	}
+}
+
+func TestCoerceType(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected interface{}
+	}{
+		{"Integer", "42", 42},
+		{"Float", "3.14", 3.14},
+		{"Boolean true", "true", true},
+		{"Boolean false", "false", false},
+		{"ISO date", "2023-05-15", time.Date(2023, 5, 15, 0, 0, 0, 0, time.UTC)},
+		{"European date", "15/05/2023", time.Date(2023, 5, 15, 0, 0, 0, 0, time.UTC)},
+		{"US date", "05/15/2023", time.Date(2023, 5, 15, 0, 0, 0, 0, time.UTC)},
+		{"ISO datetime", "2023-05-15 14:30:00", time.Date(2023, 5, 15, 14, 30, 0, 0, time.UTC)},
+		{"RFC3339", "2023-05-15T14:30:00Z", time.Date(2023, 5, 15, 14, 30, 0, 0, time.UTC)},
+		{"String", "hello", "hello"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := CoerceType(tt.input, "")
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestGetLineValues(t *testing.T) {
+	file := CSVFile{
+		Header: []string{"col_1", "col_2", "col_3"},
+		Lines: [][]string{
+			{"a", "d", "g"},
+			{"b", "e", "h"},
+			{"c", "f", "i"},
+		},
+	}
+
+	tests := []struct {
+		name       string
+		lineNumber int
+		expected   []string
+	}{
+		{"Valid line 0", 0, []string{"a", "b", "c"}},
+		{"Valid line 1", 1, []string{"d", "e", "f"}},
+		{"Valid line 2", 2, []string{"g", "h", "i"}},
+		{"Invalid line negative", -1, []string{}},
+		{"Invalid line too high", 3, []string{}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := file.GetLineValues(tt.lineNumber)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestGetColumnValues(t *testing.T) {
+	file := CSVFile{
+		Header: []string{"col_1", "col_2", "col_3", "col_4"},
+		Lines: [][]string{
+			{"a", "d", "g"},
+			{"b", "e", "h"},
+			{"c", "f", "i"},
+			{},
+		},
+	}
+
+	tests := []struct {
+		name       string
+		columnName string
+		expected   []string
+	}{
+		{"Valid column col_1", "col_1", []string{"a", "d", "g"}},
+		{"Valid column col_2", "col_2", []string{"b", "e", "h"}},
+		{"Valid column col_3", "col_3", []string{"c", "f", "i"}},
+		{"Empty column", "col_4", []string{}},
+		{"Invalid column", "col_5", []string{}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := file.GetColumnValues(tt.columnName)
+			assert.Equal(t, tt.expected, result)
 		})
 	}
 }

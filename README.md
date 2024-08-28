@@ -20,13 +20,14 @@ A fast data generator that produces CSV files from generated relational data.
    - [range](#range)
    - [match](#match)
    - [Experimental generators](#experimental-generators)
-    - [gen templates](#gen-templates)
-    - [range partitioned tables](#range-partitioned-tables)
-    - [cuid2](#cuid2)
-    - [expr](#expr)
-    - [rand](#rand)
-    - [rel_date](#rel_date)
-    - [case](#case)
+     - [gen templates](#gen-templates)
+     - [range partitioned tables](#range-partitioned-tables)
+     - [cuid2](#cuid2)
+     - [expr](#expr)
+     - [rand](#rand)
+     - [rel_date](#rel_date)
+     - [case](#case)
+     - [fk](#fk)
 1. [Inputs](#inputs)
    - [csv](#csv)
 1. [Functions](#functions)
@@ -635,7 +636,7 @@ Alternatively to UUIDs you cans use [`cuid2`](https://pkg.go.dev/github.com/nred
 
 #### expr
 
-The `expr` generator enable arithmetic/strings expressions evaluation using [govaluate](https://pkg.go.dev/github.com/vjeantet/govaluate). 
+The `expr` generator enable arithmetic/strings expressions evaluation using [expr-lang](https://expr-lang.org/docs/language-definition). 
 
 ```yaml
   - name: silly_value
@@ -709,7 +710,7 @@ tables:
       - name: max_loan
         type: expr
         processor:
-          expression: match('persons','person_id', loan_id, 'salary') / 0.3
+          expression: float(match('persons','person_id', loan_id, 'salary')) / 0.3
           format: '%.2f'
 ```
 
@@ -717,8 +718,6 @@ The full list of custom functions available inside expressions are:
 
 - match(sourceTable string, sourceColumn string, sourceValue string, matchColumn string) *returns the `matchColumn` from `sourceTable` where `sourceColumn` has `SourceValue`*
 - add_date(years int, months int, days int, date string) *Adds the specified numbers of `years`,`months` and `days` to the given `date`*
-- max(n1, n2, ...) *returns the maximum value from the list of numbers*
-- min(n1, n2, ...) *return the minimum value from the list of numbers*
 - rand() *returns a pseudo-random non-negative integer*
 - rand(n int) *returns a pseudo-random integer between 0 and `n`. `n` must be positive*
 - rand_range(min int, max int) *returns a pseudo-random integer between `min` and `max`, inclusive. Accepts both positive and negative values*
@@ -819,6 +818,52 @@ All functionalities of the [expr generator](#expr) can be used in the `When` and
     - when: 'true'
       value: 'Hi'
 ```
+
+#### FK
+
+Creates a number of rows for each value in another table, facilitating the creation of one scenario with different cardinalities for each value.
+
+The `repeat` parameter is an expression used to determine how many times each parent value should be used. Parent columns can be referenced using the notation `parent.column_name`, and other column values of the same row can be referenced by their name.
+
+You can limit the total number of records in the child table by providing a `Count` value.
+
+```yaml
+tables:
+  - name: orders
+    count: 5
+    columns:    
+      - name: order_id
+        type: range
+        processor:
+          type: int
+          from: 1
+          step: 1    
+      - name: item_count
+        type: rand
+        processor:
+          type: int
+          low: 1
+          high: 10
+  - name: order_items
+    columns:
+      - name: id
+        type: range
+        processor:
+          type: int
+          from: 1
+          step: 1
+      - name: order_id
+        type: fk 
+        processor:
+          reference: orders 
+          column: order_id
+          repeat: parent.item_count
+      - name: item_name
+        type: gen
+        processor:
+          value: ${breakfast}
+```
+
 
 ### Inputs
 
@@ -1028,7 +1073,7 @@ Thanks to the maintainers of the following fantastic packages, whose code this t
 - [go-yaml/yaml](https://github.com/go-yaml/yaml)
 - [stretchr/testify](https://github.com/stretchr/testify/assert)
 - [martinusso/go-docs](https://github.com/martinusso/go-docs)
-- [Knetic/govaluate](https://github.com/Knetic/govaluate)
+- [expr-lang](https://expr-lang.org/)
 - [nrednav/cuid2 ](https://github.com/nrednav/cuid2)
 
 ### Todos

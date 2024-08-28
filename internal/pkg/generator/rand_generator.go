@@ -59,6 +59,9 @@ func (g RandGenerator) Generate(t model.Table, c model.Column, files map[string]
 }
 
 func (g RandGenerator) generateIntRand(count int) ([]string, error) {
+	if g.Format == "" {
+		g.Format = "%v"
+	}
 	if g.Low == "" && g.High == "" {
 		return nil, fmt.Errorf("'low' and 'high' values must be provided to an int rand generator")
 	}
@@ -76,9 +79,6 @@ func (g RandGenerator) generateIntRand(count int) ([]string, error) {
 	var lines []string
 	for i := 0; i < count; i++ {
 		value := rand.Intn(high-low) + low
-		if g.Format == "" {
-			g.Format = "%v"
-		}
 		lines = append(lines, fmt.Sprintf(g.Format, value))
 	}
 
@@ -86,6 +86,9 @@ func (g RandGenerator) generateIntRand(count int) ([]string, error) {
 }
 
 func (g RandGenerator) generateFloatRand(count int) ([]string, error) {
+	if g.Format == "" {
+		g.Format = "%v"
+	}
 	if g.Low == "" && g.High == "" {
 		return nil, fmt.Errorf("'low' and 'high' values must be provided to an float64 rand generator")
 	}
@@ -103,9 +106,6 @@ func (g RandGenerator) generateFloatRand(count int) ([]string, error) {
 	var lines []string
 	for i := 0; i < count; i++ {
 		value := rand.Float64()*(high-low) + low
-		if g.Format == "" {
-			g.Format = "%g"
-		}
 		f := fmt.Sprintf(g.Format, value)
 		lines = append(lines, f)
 	}
