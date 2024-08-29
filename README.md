@@ -803,8 +803,8 @@ You can pass a go expression on `date`,`before` and `after` parameters, which al
 ```
 #### case
 
-The `case` generator evaluates a set of conditions composed of `When` and `Value` expressions.
-Each condition is evaluated in order, and when the first `When` expression evaluates to `true` its `Value` is evaluated to produce the column value.
+The `case` generator evaluates a set of conditions composed of `when` and `then` expressions.
+Each condition is evaluated in order, and when the first `when` expression evaluates to `true` the `then` is evaluated to produce the column value.
 All functionalities of the [expr generator](#expr) can be used in the `When` and `Value` expressions.
 
 ```yaml
@@ -812,11 +812,11 @@ All functionalities of the [expr generator](#expr) can be used in the `When` and
   type: case
   processor:
     - when: age <= 5 && gender == 'male'
-      value: 'Little guy'
+      then: 'Little guy'
     - when: age <= 5 && gender == 'female'
-      value: 'Little girl'
+      then: 'Little girl'
     - when: 'true'
-      value: 'Hi'
+      then: 'Hi'
 ```
 
 #### FK

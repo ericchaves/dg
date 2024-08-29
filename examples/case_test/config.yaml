@@ -22,30 +22,30 @@ tables:
         type: case
         processor:
           - when: age <= 5 && gender == 'male'
-            value: 'Little guy'
+            then: 'Little guy'
           - when: age <= 5 && gender == 'female'
-            value: 'Little girl'
+            then: 'Little girl'
           - when: age > 5 && age <= 10 && gender == 'male'
-            value: 'Buddy'
+            then: 'Buddy'
           - when: age > 5 && age <= 10 && gender == 'female'
-            value: 'Sweetie'
+            then: 'Sweetie'
           - when: age > 10 && age <= 15 && gender == 'male'
-            value: "'Hey, young man'"
+            then: "'Hey, young man'"
           - when: age > 10 && age <= 15 && gender == 'female'
-            value: "'Hey, young lady'"
+            then: "'Hey, young lady'"
           - when: age > 15 && age <= 20 && gender == 'male'
-            value: "'Whats up, dude?'"
+            then: "'Whats up, dude?'"
           - when: age > 15 && age <= 20 && gender == 'female'
-            value: "'Whats up, girl?'"
+            then: "'Whats up, girl?'"
           - when: age > 20 && age <= 30 && gender == 'male'
-            value: "'Hey, man'"
+            then: "'Hey, man'"
           - when: age > 20 && age <= 30 && gender == 'female'
-            value: "'Hey, there'"
+            then: "'Hey, there'"
           - when: age > 30 && age <= 40 && gender == 'male'
-            value: "'Hello, mister'"
+            then: "'Hello, mister'"
           - when: age > 30 && age <= 40 && gender == 'female'
-            value: "'Hello, madam'"
+            then: "'Hello, madam'"
           - when: age > 40 && gender == 'male'
-            value: "'Good to see you, sir'"
+            then: "'Good to see you, sir'"
           - when: age > 40 && gender == 'female'
-            value: "'Good to see you, madam'"
+            then: "'Good to see you, madam'"

@@ -1,7 +1,6 @@
 package model
 
 import (
-	"strconv"
 	"time"
 
 	"github.com/samber/lo"
@@ -113,35 +112,10 @@ func (c *CSVFile) GetRecord(lineNumber int) map[string]any {
 	}
 	values := c.GetLineValues(lineNumber)
 	for i, header := range c.Header {
-		record[header] = CoerceType(values[i], "")
+		record[header] = values[i]
 	}
 	record[LN] = lineNumber
 	return record
-}
-
-func CoerceType(value string, dateFormat string) interface{} {
-	// Try to convert to an integer
-	if intVal, err := strconv.Atoi(value); err == nil {
-		return intVal
-	}
-
-	// Try to convert to a float64
-	if floatVal, err := strconv.ParseFloat(value, 64); err == nil {
-		return floatVal
-	}
-
-	// Try to convert to a boolean
-	if boolVal, err := strconv.ParseBool(value); err == nil {
-		return boolVal
-	}
-
-	// Try to convert to a time.Time
-	if dateVal, ok := ParseDate(value, dateFormat); ok {
-		return dateVal
-	}
-
-	// If all conversions fail, return the original string
-	return value
 }
 
 func ParseDate(value string, dateFormat string) (time.Time, bool) {

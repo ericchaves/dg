@@ -2,7 +2,6 @@ package model
 
 import (
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -111,32 +110,6 @@ func TestUnique(t *testing.T) {
 			act := file.Unique()
 
 			assert.Equal(t, c.exp, act)
-		})
-	}
-}
-
-func TestCoerceType(t *testing.T) {
-	tests := []struct {
-		name     string
-		input    string
-		expected interface{}
-	}{
-		{"Integer", "42", 42},
-		{"Float", "3.14", 3.14},
-		{"Boolean true", "true", true},
-		{"Boolean false", "false", false},
-		{"ISO date", "2023-05-15", time.Date(2023, 5, 15, 0, 0, 0, 0, time.UTC)},
-		{"European date", "15/05/2023", time.Date(2023, 5, 15, 0, 0, 0, 0, time.UTC)},
-		{"US date", "05/15/2023", time.Date(2023, 5, 15, 0, 0, 0, 0, time.UTC)},
-		{"ISO datetime", "2023-05-15 14:30:00", time.Date(2023, 5, 15, 14, 30, 0, 0, time.UTC)},
-		{"RFC3339", "2023-05-15T14:30:00Z", time.Date(2023, 5, 15, 14, 30, 0, 0, time.UTC)},
-		{"String", "hello", "hello"},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := CoerceType(tt.input, "")
-			assert.Equal(t, tt.expected, result)
 		})
 	}
 }

@@ -8,8 +8,8 @@ import (
 )
 
 type CaseCondition struct {
-	When  string `yaml:"when"`
-	Value string `yaml:"value"`
+	When string `yaml:"when"`
+	Then string `yaml:"then"`
 }
 
 // ConstGenerator provides additional context to a case column.
@@ -36,9 +36,9 @@ func (g CaseGenerator) Generate(t model.Table, c model.Column, files map[string]
 				return fmt.Errorf("error parsing When: %s (%w)", cond.When, err)
 			}
 			if result.(bool) {
-				value, err := ec.evaluate(cond.Value, env)
+				value, err := ec.evaluate(cond.Then, env)
 				if err != nil {
-					return fmt.Errorf("error evaluating Value: %s (%w)", cond.Value, err)
+					return fmt.Errorf("error evaluating Value: %s (%w)", cond.Then, err)
 				}
 				lines = append(lines, value.(string))
 				break

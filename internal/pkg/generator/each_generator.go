@@ -36,6 +36,12 @@ func (g EachGenerator) Generate(t model.Table, files map[string]model.CSVFile) e
 		srcColumn := gCol.Column
 		srcColumnIndex := lo.IndexOf(srcTable.Header, srcColumn)
 
+		if srcTable.Name == "" {
+			return fmt.Errorf("table %q not found", gCol.Table)
+		}
+		if srcColumnIndex == -1 {
+			return fmt.Errorf("column %s not found in table %q", srcColumn, srcTable.Name)
+		}
 		if len(srcTable.Lines)-1 < srcColumnIndex {
 			return fmt.Errorf("column %q out of bounds for table %q", srcColumn, srcTable.Name)
 		}

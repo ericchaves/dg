@@ -52,7 +52,6 @@ func (g RelDateGenerator) Generate(t model.Table, c model.Column, files map[stri
 	for i := 0; i < t.Count; i++ {
 		rec := model.GetRecord(t.Name, i, files)
 		env := ec.makeEnv(rec)
-
 		reference, ok := model.ParseDate(g.Date, g.Format)
 		if !ok {
 			result, err := ec.evaluate(g.Date, env)
