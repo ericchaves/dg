@@ -20,8 +20,8 @@ func TestFKGenerator_Generate(t *testing.T) {
 		{
 			name: "Valid FK generation",
 			fkGenerator: ForeignKeyGenerator{
-				Reference: "refTable",
-				Column:    "refColumn",
+				Table:  "refTable",
+				Column: "refColumn",
 			},
 			table: model.Table{
 				Name:  "testTable",
@@ -53,8 +53,8 @@ func TestFKGenerator_Generate(t *testing.T) {
 		{
 			name: "Referenced table not found",
 			fkGenerator: ForeignKeyGenerator{
-				Reference: "nonExistentTable",
-				Column:    "refColumn",
+				Table:  "nonExistentTable",
+				Column: "refColumn",
 			},
 			table: model.Table{
 				Name:  "testTable",
@@ -70,8 +70,8 @@ func TestFKGenerator_Generate(t *testing.T) {
 		{
 			name: "No values in referenced column",
 			fkGenerator: ForeignKeyGenerator{
-				Reference: "refTable",
-				Column:    "emptyColumn",
+				Table:  "refTable",
+				Column: "emptyColumn",
 			},
 			table: model.Table{
 				Name:  "testTable",
@@ -97,9 +97,9 @@ func TestFKGenerator_Generate(t *testing.T) {
 		{
 			name: "FK generation with cardinality",
 			fkGenerator: ForeignKeyGenerator{
-				Reference: "orders",
-				Column:    "order_id",
-				repeat:    "parent.item_count",
+				Table:  "orders",
+				Column: "order_id",
+				repeat: "parent.item_count",
 			},
 			table: model.Table{
 				Name: "order_items",

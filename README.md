@@ -855,7 +855,7 @@ tables:
       - name: order_id
         type: fk 
         processor:
-          reference: orders 
+          table: orders 
           column: order_id
           repeat: parent.item_count
       - name: item_name

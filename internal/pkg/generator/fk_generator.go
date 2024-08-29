@@ -8,7 +8,7 @@ import (
 )
 
 type ForeignKeyGenerator struct {
-	Reference   string `yaml:"reference"`
+	Table       string `yaml:"table"`
 	ReferenceAs string `yaml:"reference_as"`
 	Column      string `yaml:"column"`
 	repeat      string `yaml:"repeat"`
@@ -32,7 +32,7 @@ func (g ForeignKeyGenerator) Generate(t model.Table, files map[string]model.CSVF
 }
 
 func (g ForeignKeyGenerator) generate(t model.Table, col model.Column, files map[string]model.CSVFile) error {
-	refAs, refTable, refColumn := g.ReferenceAs, g.Reference, g.Column
+	refAs, refTable, refColumn := g.ReferenceAs, g.Table, g.Column
 	if refAs == "" {
 		refAs = "parent"
 	}
