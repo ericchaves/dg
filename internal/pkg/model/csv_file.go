@@ -67,34 +67,10 @@ func GetRecord(table string, lineNumber int, files map[string]CSVFile) map[strin
 	if !ok {
 		return map[string]any{}
 	}
-	return refFile.GetRecord((lineNumber))
-}
-
-func (c *CSVFile) GetLineValues(lineNumber int) []string {
-	if lineNumber < 0 || lineNumber >= len(c.Lines[0]) {
-		return []string{}
-	}
-	var values []string
-	for _, line := range c.Lines {
-		if lineNumber < len(line) {
-			values = append(values, line[lineNumber])
-		}
-	}
-	return values
+	return refFile.GetRecord(lineNumber)
 }
 
 func (c *CSVFile) GetColumnValues(columnName string) []string {
-	columnIndex := c.GetColumnIndex(columnName)
-	if columnIndex == -1 {
-		return []string{}
-	}
-	if len(c.Lines) < columnIndex+1 {
-		return []string{}
-	}
-	return c.Lines[columnIndex]
-}
-
-func (c *CSVFile) GetColumnIndex(columnName string) int {
 	columnIndex := -1
 	for i, header := range c.Header {
 		if header == columnName {
@@ -102,19 +78,32 @@ func (c *CSVFile) GetColumnIndex(columnName string) int {
 			break
 		}
 	}
-	return columnIndex
+	if columnIndex == -1 || columnIndex >= len(c.Lines) {
+		return []string{}
+	}
+	return c.Lines[columnIndex]
 }
 
 func (c *CSVFile) GetRecord(lineNumber int) map[string]any {
 	record := make(map[string]any)
-	if lineNumber < 0 || len(c.Lines) == 0 || lineNumber > len(c.Lines[0]) {
-		return record
+
+	if lineNumber < 0 || len(c.Lines) == 0 {
+		return map[string]any{}
 	}
-	values := c.GetLineValues(lineNumber)
+
+	empty := true
 	for i, header := range c.Header {
-		record[header] = values[i]
+		if i < len(c.Lines) && lineNumber < len(c.Lines[i]) {
+			record[header] = c.Lines[i][lineNumber]
+			empty = false
+		} else {
+			record[header] = nil
+		}
 	}
 	record[LN] = lineNumber
+	if empty {
+		return map[string]any{}
+	}
 	return record
 }
 

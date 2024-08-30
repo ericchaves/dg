@@ -68,7 +68,7 @@ func TestGeneratorExprColumnValues(t *testing.T) {
 		},
 	}
 	g := ExprGenerator{
-		Expression: "rate * months",
+		Expression: "float(rate) * int(months)",
 		Format:     "%.4f",
 	}
 	err := g.Generate(table, column, files)
@@ -156,15 +156,15 @@ func TestGeneratorExprRandFunctions(t *testing.T) {
 		},
 		{
 			name:       "rand_range",
-			expression: "rand_range(-10,parameter)",
+			expression: "rand_range(-10, int(parameter))",
 		},
 		{
 			name:       "rand_range with all negatives",
-			expression: "rand_range(-30,parameter * -1)",
+			expression: "rand_range(-30, int(parameter) * -1)",
 		},
 		{
 			name:       "rand with value from other cell",
-			expression: "rand(parameter)",
+			expression: "rand(int(parameter))",
 		},
 		{
 			name:       "rand_float64",
@@ -172,7 +172,7 @@ func TestGeneratorExprRandFunctions(t *testing.T) {
 		},
 		{
 			name:       "rand_perm",
-			expression: "rand_perm(parameter)",
+			expression: "rand_perm(int(parameter))",
 		},
 	}
 	for _, c := range cases {
@@ -232,7 +232,7 @@ func TestGeneratorExprMinMaxFunctions(t *testing.T) {
 		},
 		{
 			name:       "min with references",
-			expression: "min(5,-3,0.3,7,-0.5, parameter)",
+			expression: "min(5,-3,0.3,7,-0.5, int(parameter))",
 			expected:   "-3",
 		},
 		{
@@ -252,7 +252,7 @@ func TestGeneratorExprMinMaxFunctions(t *testing.T) {
 		},
 		{
 			name:       "max with references",
-			expression: "max(5,-3,0.3,7,-0.5, parameter)",
+			expression: "max(5,-3,0.3,7,-0.5, int(parameter))",
 			expected:   "10",
 		},
 	}

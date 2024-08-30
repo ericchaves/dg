@@ -28,35 +28,35 @@ func TestCaseGenerator(t *testing.T) {
 	}
 	g := CaseGenerator{
 		{
-			When: "age <= 10 && gender == 'male'",
+			When: "int(age) <= 10 && gender == 'male'",
 			Then: "'little guy!'",
 		},
 		{
-			When: "age <= 10 && gender == 'female'",
+			When: "int(age) <= 10 && gender == 'female'",
 			Then: "'little girl!'",
 		},
 		{
-			When: "age > 10 && age <= 20 && gender == 'male'",
+			When: "int(age) > 10 && int(age) <= 20 && gender == 'male'",
 			Then: "'Hey, young man!'",
 		},
 		{
-			When: "age > 10 && age <= 20 && gender == 'female'",
+			When: "int(age) > 10 && int(age) <= 20 && gender == 'female'",
 			Then: "'Hey, young lady!'",
 		},
 		{
-			When: "age > 20 && age <= 50 && gender == 'male'",
+			When: "int(age) > 20 && int(age) <= 50 && gender == 'male'",
 			Then: "'Hello, sir!'",
 		},
 		{
-			When: "age > 20 && age <= 50 && gender == 'female'",
+			When: "int(age) > 20 && int(age) <= 50 && gender == 'female'",
 			Then: "'Hello, madam!'",
 		},
 		{
-			When: "age > 50 && gender == 'male'",
+			When: "int(age) > 50 && gender == 'male'",
 			Then: "'Good day, sir!'",
 		},
 		{
-			When: "age > 50 && gender == 'female'",
+			When: "int(age) > 50 && gender == 'female'",
 			Then: "'Good day, madam!'",
 		},
 		{

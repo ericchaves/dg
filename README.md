@@ -28,6 +28,8 @@ A fast data generator that produces CSV files from generated relational data.
      - [rel_date](#rel_date)
      - [case](#case)
      - [fk](#fk)
+     - [count_values](#count_values)
+     - [once](#once)
 1. [Inputs](#inputs)
    - [csv](#csv)
 1. [Functions](#functions)
@@ -636,7 +638,7 @@ Alternatively to UUIDs you cans use [`cuid2`](https://pkg.go.dev/github.com/nred
 
 #### expr
 
-The `expr` generator enable arithmetic/strings expressions evaluation using [expr-lang](https://expr-lang.org/docs/language-definition). 
+The `expr` generator enable arithmetic/strings expressions evaluation using [expr-lang](https://expr-lang.org/docs/language-definition).
 
 ```yaml
   - name: silly_value
@@ -645,7 +647,7 @@ The `expr` generator enable arithmetic/strings expressions evaluation using [exp
       expression: 14 + 33
 ```
 
-You can `format` the output to ensure the requirements of your data shape:
+You can use `format` attribute to ensure the requirements of your data shape:
 
 ```yaml
 - name: formatted_value
@@ -655,7 +657,8 @@ You can `format` the output to ensure the requirements of your data shape:
       format: '%.2f'
 ```
 
-Values from the same table row can be used in the expression by using the name of the column:
+Values from the same table row can be used in the expression by using the name of the column.
+Since column values are generated as strings, you must use expr's type functions to convert the string value into the the proper type for the operation. 
 
 ```yaml
   - name: installments
@@ -674,7 +677,7 @@ Values from the same table row can be used in the expression by using the name o
   - name: installment_value
     type: expr
     processor:
-      expression: total / installments
+      expression: 'int(total) / int(installments)'
       format: '%.4f'
 ```
 
@@ -758,47 +761,47 @@ For detailed information on date layouts (formats) check out [go/time documentio
 
 #### rel_date
 
-The `rel_date` generator allows for the generation of random dates relative to a given reference date. For example, using the `after` and `before` values, you can dates within a range, such as from 7 days before to 5 days after the current date (values are inclusive).
+The `rel_date` generator allows for the generation of random dates relative to a given reference date. For example, using the `after` and `before` attributes, you can set dates within a range, such as from 7 days before to 5 days after the current date (values are inclusive).
 
-The unit specifies the time span unit. Allowed values are `day`, `month`, and `year`.
+The `unit` specifies the time span unit. Allowed values are `day`, `month`, and `year`.
 
 You can provide a date layout using the [Go time documentation](https://pkg.go.dev/time#pkg-constants) to `format` the output value.
 
 The `date` parameter is optional and if not provided the current date (`'now'`) is assumed. When format is specified, the `date` must be in the same layout. 
 
-You can pass a go expression on `date`,`before` and `after` parameters, which allows reference other values in the same row by providing the column name , use the match function to match other tables values or perform some complex calculations.
+You can pass a expr expression on `date`,`before` and `after` parameters, which allows reference other values in the same row by providing the column name , use the match function to match other tables values or perform some complex calculations. `before` and `after` expressions evaluate to `int` while `date` must evaluate to a `date` type.
 
 ```yaml
   - name: relative_from_now
     type: rel_date
     processor:
       unit: day
-      after: -7
-      before: 7
+      after: '-7'
+      before: '7'
       format: '02/01/2006'
   - name: relative_from_date
     type: rel_date
     processor:
       date: '2020-12-25'
       unit: year
-      after: -4
-      before: 4
+      after: '-4'
+      before:'4'
       format: '2006-01-02'
   - name: relative_from_other_column
     type: rel_date
     processor:
       date: 'other_column_name'
       unit: year
-      after: -4
-      before: 4
+      after: '-4'
+      before: '4'
       format: '2006-01-02'
   - name: before_after_from_other_column
     type: rel_date
     processor:
       date: 'now'
       unit: year
-      after: 'some_column'
-      before: 'another_column'
+      after: 'int(some_column)'
+      before: 'int(another_column)'
       format: '2006-01-02'
 ```
 #### case
@@ -811,9 +814,9 @@ All functionalities of the [expr generator](#expr) can be used in the `When` and
 - name: greeting
   type: case
   processor:
-    - when: age <= 5 && gender == 'male'
+    - when: "int(age) <= 5 && gender == 'male'"
       then: 'Little guy'
-    - when: age <= 5 && gender == 'female'
+    - when: "int(age) <= 5 && gender == 'female'"
       then: 'Little girl'
     - when: 'true'
       then: 'Hi'
@@ -823,7 +826,11 @@ All functionalities of the [expr generator](#expr) can be used in the `When` and
 
 Creates a number of rows for each value in another table, facilitating the creation of one scenario with different cardinalities for each value.
 
-The `repeat` parameter is an expression used to determine how many times each parent value should be used. Parent columns can be referenced using the notation `parent.column_name`, and other column values of the same row can be referenced by their name.
+The `repeat` parameter is an expr expression used to determine how many times each parent value should be used.
+
+Valid examples are `repeat: '3'`, `repeat: "3"` and `repeat: 'some_field * 3'` but `repeat: 3` is invalid.
+
+Parent columns can be referenced using the notation `parent.column_name`, and other column values of the same row can be referenced by their name.
 
 You can limit the total number of records in the child table by providing a `Count` value.
 
@@ -857,13 +864,51 @@ tables:
         processor:
           table: orders 
           column: order_id
-          repeat: parent.item_count
+          repeat: 'int(parent.item_count)'
       - name: item_name
         type: gen
         processor:
           value: ${breakfast}
 ```
 
+#### count_values
+
+The `count_values` generator counts the occurrences of each unique value in a specified column from a source table. It then generates a new column with each value repeated based on its count. This generator is useful for creating distributions or frequency-based data sets. The `expression` parameter is evaluated using the expr generator, allowing for flexible data generation.
+
+The following custom variables are available for use in expressions:
+
+* **LN**: Represents the generated line number, provided as an integer.
+* **VALUE**: Refers to the current value, formatted as a string.
+* **COUNT**: Indicates the number of occurrences of **VALUE**, expressed as an integer.
+* **ITN**: Denotes the current iterator number for **VALUE** (e.g., 1 of 3, 2 of 3, etc.).
+* **Example** YAML configuration:
+
+```yaml
+- name: value_counts
+  type: count_values
+  processor:
+    table: source_table
+    column: category
+    expression: "string(ITN) + ':' + string(VALUE) + ':' + string(COUNT)"
+```
+
+In this example, for each unique value in the 'category' column of 'source_table', it generates a string combining the line number (ITN), the value itself (VALUE), and its count (COUNT).
+
+#### once
+
+The `once` generator reads all values from a specified column in a source table and outputs one value at a time, ensuring that each value is used only once. This generator is useful when you need to assign unique values from a predefined set without repetition.
+
+**Example** YAML configuration:
+
+```yaml
+- name: unique_assignment
+  type: once
+  processor:
+    table: source_table
+    column: unique_ids
+```
+
+In this example, the generator will create a pool of all values from the 'unique_ids' column in 'source_table', and then assign these values one by one without repetition. If there are more rows to generate than unique values in the pool, the generator will return an error.
 
 ### Inputs
 

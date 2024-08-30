@@ -127,18 +127,18 @@ func TestGetLineValues(t *testing.T) {
 	tests := []struct {
 		name       string
 		lineNumber int
-		expected   []string
+		expected   map[string]any
 	}{
-		{"Valid line 0", 0, []string{"a", "b", "c"}},
-		{"Valid line 1", 1, []string{"d", "e", "f"}},
-		{"Valid line 2", 2, []string{"g", "h", "i"}},
-		{"Invalid line negative", -1, []string{}},
-		{"Invalid line too high", 3, []string{}},
+		{"Valid line 0", 0, map[string]any{"col_1": "a", "col_2": "b", "col_3": "c", "LN": 0}},
+		{"Valid line 1", 1, map[string]any{"col_1": "d", "col_2": "e", "col_3": "f", "LN": 1}},
+		{"Valid line 2", 2, map[string]any{"col_1": "g", "col_2": "h", "col_3": "i", "LN": 2}},
+		{"Invalid line negative", -1, map[string]any{}},
+		{"Invalid line too high", 3, map[string]any{}},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := file.GetLineValues(tt.lineNumber)
+			result := file.GetRecord(tt.lineNumber)
 			assert.Equal(t, tt.expected, result)
 		})
 	}

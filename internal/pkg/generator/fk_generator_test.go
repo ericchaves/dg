@@ -99,7 +99,7 @@ func TestFKGenerator_Generate(t *testing.T) {
 			fkGenerator: ForeignKeyGenerator{
 				Table:  "orders",
 				Column: "order_id",
-				repeat: "parent.item_count",
+				Repeat: "int(parent.item_count)",
 			},
 			table: model.Table{
 				Name: "order_items",
@@ -134,28 +134,6 @@ func TestFKGenerator_Generate(t *testing.T) {
 					Output: true,
 				},
 			},
-		},
-		{
-			name: "Missing repeat value",
-			fkGenerator: ForeignKeyGenerator{
-				Table:  "refTable",
-				Column: "refColumn",
-			},
-			table: model.Table{
-				Name:  "testTable",
-				Count: 3,
-			},
-			column: model.Column{
-				Name: "fkColumn",
-			},
-			files: map[string]model.CSVFile{
-				"refTable": {
-					Header: []string{"refColumn"},
-					Lines:  [][]string{{"1", "2", "3", "4"}},
-				},
-			},
-			expectedError:  "missing required repeat value",
-			expectedResult: map[string]model.CSVFile{},
 		},
 	}
 

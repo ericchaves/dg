@@ -71,6 +71,10 @@ func main() {
 		log.Fatalf("error removing supressed columns: %v", err)
 	}
 
+	if err = reorderColumns(c, tt, files); err != nil {
+		log.Fatalf("error validating files: %v", err)
+	}
+
 	if err := writeFiles(*outputDir, files, tt); err != nil {
 		log.Fatalf("error writing csv files: %v", err)
 	}
@@ -142,8 +146,48 @@ func generateTables(c model.Config, tt ui.TimerFunc, files map[string]model.CSVF
 	return nil
 }
 
+func reorderColumns(c model.Config, tt ui.TimerFunc, files map[string]model.CSVFile) error {
+	defer tt(time.Now(), "reorder all table columns")
+
+	for _, table := range c.Tables {
+		file, ok := files[table.Name]
+		if !ok {
+			continue // Skip if the file doesn't exist
+		}
+		// Reorder columns
+		newHeader := make([]string, len(table.Columns))
+		newLines := make([][]string, len(file.Lines))
+		for i, col := range table.Columns {
+			oldIndex := -1
+			for j, header := range file.Header {
+				if header == col.Name {
+					oldIndex = j
+					break
+				}
+			}
+			if oldIndex == -1 {
+				continue
+			}
+			newHeader[i] = col.Name
+			newLines[i] = file.Lines[oldIndex]
+		}
+
+		file.Header = newHeader
+		file.Lines = newLines
+		files[table.Name] = file
+	}
+
+	return nil
+}
+
 func generateTable(t model.Table, files map[string]model.CSVFile, tt ui.TimerFunc) error {
 	defer tt(time.Now(), fmt.Sprintf("generated table: %s", t.Name))
+
+	// Create any foreign_key columns next
+	var fk generator.ForeignKeyGenerator
+	if err := fk.Generate(t, files); err != nil {
+		return fmt.Errorf("generating fk columns: %w", err)
+	}
 
 	// Create the Cartesian product of any each types first.
 	var eg generator.EachGenerator
@@ -155,12 +199,6 @@ func generateTable(t model.Table, files map[string]model.CSVFile, tt ui.TimerFun
 	var cg generator.ConstGenerator
 	if err := cg.Generate(t, files); err != nil {
 		return fmt.Errorf("generating const columns: %w", err)
-	}
-
-	// Create any foreign_key columns next
-	var fk generator.ForeignKeyGenerator
-	if err := fk.Generate(t, files); err != nil {
-		return fmt.Errorf("generating fk columns: %w", err)
 	}
 
 	for _, col := range t.Columns {
@@ -267,10 +305,26 @@ func generateTable(t model.Table, files map[string]model.CSVFile, tt ui.TimerFun
 		case "case":
 			var g generator.CaseGenerator
 			if err := col.Generator.UnmarshalFunc(&g); err != nil {
-				return fmt.Errorf("parsing expr process for %s: %w", col.Name, err)
+				return fmt.Errorf("parsing case process for %s: %w", col.Name, err)
 			}
 			if err := g.Generate(t, col, files); err != nil {
-				return fmt.Errorf("running expr process for %s.%s: %w", t.Name, col.Name, err)
+				return fmt.Errorf("running case process for %s.%s: %w", t.Name, col.Name, err)
+			}
+		case "count_values":
+			var g generator.CountValuesGenerator
+			if err := col.Generator.UnmarshalFunc(&g); err != nil {
+				return fmt.Errorf("parsing count_values process for %s: %w", col.Name, err)
+			}
+			if err := g.Generate(t, col, files); err != nil {
+				return fmt.Errorf("running count_values process for %s.%s: %w", t.Name, col.Name, err)
+			}
+		case "once":
+			var g generator.OnceGenerator
+			if err := col.Generator.UnmarshalFunc(&g); err != nil {
+				return fmt.Errorf("parsing once process for %s: %w", col.Name, err)
+			}
+			if err := g.Generate(t, col, files); err != nil {
+				return fmt.Errorf("running once process for %s.%s: %w", t.Name, col.Name, err)
 			}
 		}
 	}

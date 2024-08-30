@@ -11,7 +11,7 @@ type ForeignKeyGenerator struct {
 	Table       string `yaml:"table"`
 	ReferenceAs string `yaml:"reference_as"`
 	Column      string `yaml:"column"`
-	repeat      string `yaml:"repeat"`
+	Repeat      string `yaml:"repeat"`
 }
 
 func (g ForeignKeyGenerator) Generate(t model.Table, files map[string]model.CSVFile) error {
@@ -19,11 +19,11 @@ func (g ForeignKeyGenerator) Generate(t model.Table, files map[string]model.CSVF
 		return c.Type == "fk"
 	})
 	for _, c := range cols {
-		var fk ForeignKeyGenerator
-		if err := c.Generator.UnmarshalFunc(&fk); err != nil {
+		var fkCol ForeignKeyGenerator
+		if err := c.Generator.UnmarshalFunc(&fkCol); err != nil {
 			return fmt.Errorf("parsing fk process for %s.%s: %w", t.Name, c.Name, err)
 		}
-		if err := fk.generate(t, c, files); err != nil {
+		if err := fkCol.generate(t, c, files); err != nil {
 			return fmt.Errorf("generating fk columns: %w", err)
 		}
 	}
@@ -50,12 +50,12 @@ func (g ForeignKeyGenerator) generate(t model.Table, col model.Column, files map
 	rows := 0
 	for i, val := range refValues {
 		repeat := 1
-		if g.repeat != "" {
+		if g.Repeat != "" {
 			ec := &ExprContext{Files: files}
 			env := ec.makeEnvFromLine(t.Name, i)
 			parent := refFile.GetRecord(i)
 			env[refAs] = parent
-			output, err := ec.evaluate(g.repeat, env)
+			output, err := ec.evaluate(g.Repeat, env)
 			if err != nil {
 				return err
 			}

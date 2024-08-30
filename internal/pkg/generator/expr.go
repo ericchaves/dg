@@ -23,7 +23,7 @@ type ExprContext struct {
 func (ec *ExprContext) makeEnvFromLine(filename string, line int) map[string]any {
 	refFile, ok := ec.Files[filename]
 	if !ok {
-		return ec.makeEnv(map[string]any{model.LN: line})
+		return ec.makeEnv(map[string]any{model.LN: strconv.Itoa(line)})
 	}
 	record := refFile.GetRecord(line)
 	return ec.makeEnv(record)
@@ -61,7 +61,7 @@ func (ec *ExprContext) makeEnv(record map[string]any) map[string]any {
 				return "", fmt.Errorf("error parsing days: %w", err)
 			}
 			var data time.Time
-			tipo := getType(args[3])
+			tipo := ec.getType(args[3])
 			switch tipo {
 			case "time.Time":
 				data = args[3].(time.Time)
@@ -184,6 +184,35 @@ func (ec *ExprContext) searchFile(sourceFile model.CSVFile, sourceColumn, source
 	return "", fmt.Errorf("value not found for %s in column %s", sourceValue, sourceColumn)
 }
 
-func getType(value any) string {
+func (ec *ExprContext) getType(value any) string {
 	return reflect.TypeOf(value).String()
+}
+
+func (ec *ExprContext) AnyToString(value any) string {
+	switch ec.getType(value) {
+	case "time.Time":
+		if ec.Format == "" {
+			ec.Format = "2006-01-02"
+		}
+		return value.(time.Time).Format(ec.Format)
+	case "float64":
+		if ec.Format == "" {
+			ec.Format = "%g"
+		}
+		return fmt.Sprintf(ec.Format, value.(float64))
+	case "int":
+		if ec.Format == "" {
+			ec.Format = "%d"
+		}
+		return fmt.Sprintf(ec.Format, value.(int))
+	case "bool":
+		if ec.Format == "" {
+			ec.Format = "%t"
+		}
+		return fmt.Sprintf(ec.Format, value.(bool))
+	case "string":
+		return value.(string)
+	default:
+		return fmt.Sprintf("%v", value)
+	}
 }
