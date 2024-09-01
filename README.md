@@ -896,7 +896,9 @@ In this example, for each unique value in the 'category' column of 'source_table
 
 #### once
 
-The `once` generator reads all values from a specified column in a source table and outputs one value at a time, ensuring that each value is used only once. This generator is useful when you need to assign unique values from a predefined set without repetition.
+The `once` generator reads values from a specified column in a source table and assigns them to rows in the target table, matching values based on a specified column in the target table, like the `match` generator, but ensuring that each value is used only once. 
+
+This generator is useful when you need to assign unique values from a predefined set without repetition, while maintaining a relationship with another column.
 
 **Example** YAML configuration:
 
@@ -904,11 +906,19 @@ The `once` generator reads all values from a specified column in a source table 
 - name: unique_assignment
   type: once
   processor:
-    table: source_table
-    column: unique_ids
+    source_table: source_table
+    source_column: unique_ids
+    source_value: value_column
+    match_column: match_column
 ```
 
-In this example, the generator will create a pool of all values from the 'unique_ids' column in 'source_table', and then assign these values one by one without repetition. If there are more rows to generate than unique values in the pool, the generator will return an error.
+In this example, the generator will:
+1. Look up values in the 'source_table'.
+2. Match the 'match_column' in the current table with the 'source_column' in the source table.
+3. When a match is found, it will assign the corresponding value from the 'source_value' column.
+4. Each value from 'source_value' is used only once.
+
+If there are no unused values left for a particular match, or if no match is found, the generator will return an error.
 
 ### Inputs
 

@@ -8,130 +8,135 @@ import (
 )
 
 func TestOnceGenerator_Generate(t *testing.T) {
-	// Setup
-	generator := OnceGenerator{
-		Table:  "source_table",
-		Column: "unique_ids",
+	// Configuração do teste
+	sourceTable := model.CSVFile{
+		Name:   "source",
+		Header: []string{"id", "name", "value"},
+		Lines: [][]string{
+			{"1", "2", "3", "4"},
+			{"Alice", "Bob", "Alice", "Bob"},
+			{"A", "B", "C", "D"},
+		},
 	}
 
-	table := model.Table{Name: "test_table"}
-	column := model.Column{
-		Name: "test_column",
-		Generator: model.RawMessage{
-			UnmarshalFunc: func(v interface{}) error {
-				*(v.(*OnceGenerator)) = generator
-				return nil
-			},
+	targetTable := model.CSVFile{
+		Name:   "target",
+		Header: []string{"id", "ref"},
+		Lines: [][]string{
+			{"1", "2", "3"},
+			{"Alice", "Bob", "Alice"},
 		},
 	}
 
 	files := map[string]model.CSVFile{
-		"source_table": {
-			Name:   "source_table",
-			Header: []string{"unique_ids"},
-			Lines:  [][]string{{"A", "B", "C", "D", "E"}},
-		},
-		"test_table": {
-			Name:   "test_table",
-			Header: []string{"test_column"},
-			Lines:  [][]string{{}},
-		},
+		"source": sourceTable,
+		"target": targetTable,
 	}
 
-	// Execute
+	generator := OnceGenerator{
+		SourceTable:  "source",
+		SourceColumn: "name",
+		SourceValue:  "value",
+		MatchColumn:  "ref",
+	}
+
+	table := model.Table{
+		Name:    "target",
+		Count:   3,
+		Columns: []model.Column{{Name: "ref"}, {Name: "new_value"}},
+	}
+
+	column := model.Column{Name: "new_value"}
+
+	// Execução do teste
 	err := generator.Generate(table, column, files)
 
-	// Assert
+	// Verificações
 	assert.NoError(t, err)
-	assert.Contains(t, files, "test_table")
-	assert.Len(t, files["test_table"].Lines, 2) // Original column + new column
 
-	newColumn := files["test_table"].Lines[1]
-	assert.Len(t, newColumn, 5) // Should have 5 unique values
-
-	// Check that all values from source are used exactly once
-	usedValues := make(map[string]bool)
-	for _, value := range newColumn {
-		assert.False(t, usedValues[value], "Value %s was used more than once", value)
-		usedValues[value] = true
-	}
-	assert.Len(t, usedValues, 5)
+	generatedTable := files["target"]
+	assert.Equal(t, []string{"id", "ref", "new_value"}, generatedTable.Header)
+	assert.Equal(t, 3, len(generatedTable.Lines))
+	assert.Equal(t, []string{"1", "2", "3"}, generatedTable.Lines[0])
+	assert.Equal(t, []string{"Alice", "Bob", "Alice"}, generatedTable.Lines[1])
+	assert.Equal(t, []string{"A", "B", "C"}, generatedTable.Lines[2])
 }
 
-func TestOnceGenerator_Generate_InsufficientValues(t *testing.T) {
-	// Setup
+func TestOnceGenerator_Generate_ErrorCases(t *testing.T) {
 	generator := OnceGenerator{
-		Table:  "source_table",
-		Column: "unique_ids",
+		SourceTable:  "source",
+		SourceColumn: "name",
+		SourceValue:  "value",
+		MatchColumn:  "ref",
 	}
 
-	table := model.Table{Name: "test_table", Count: 10}
-	column := model.Column{
-		Name: "test_column",
-		Generator: model.RawMessage{
-			UnmarshalFunc: func(v interface{}) error {
-				*(v.(*OnceGenerator)) = generator
-				return nil
-			},
-		},
-	}
+	t.Run("Source table not found", func(t *testing.T) {
+		files := map[string]model.CSVFile{}
+		err := generator.Generate(model.Table{}, model.Column{}, files)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "source table source not found")
+	})
 
-	files := map[string]model.CSVFile{
-		"source_table": {
-			Name:   "source_table",
-			Header: []string{"unique_ids"},
-			Lines:  [][]string{{"A", "B", "C"}},
-		},
-		"test_table": {
-			Name:   "test_table",
-			Header: []string{"test_column"},
-			Lines:  [][]string{{}},
-		},
-	}
+	t.Run("Source column not found", func(t *testing.T) {
+		files := map[string]model.CSVFile{
+			"source": {Header: []string{"id", "wrong_name", "value"}},
+		}
+		err := generator.Generate(model.Table{}, model.Column{}, files)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "source column or value column not found in table source")
+	})
 
-	// Execute
-	err := generator.Generate(table, column, files)
+	t.Run("Missing destination table", func(t *testing.T) {
+		files := map[string]model.CSVFile{
+			"source": {Header: []string{"id", "name", "value"}},
+		}
+		table := model.Table{Name: "target", Columns: []model.Column{{Name: "wrong_ref"}}}
+		err := generator.Generate(table, model.Column{}, files)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "missing destination table")
+	})
 
-	// Assert
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "not enough unique values in the pool to generate")
+	t.Run("Match column not found", func(t *testing.T) {
+		files := map[string]model.CSVFile{
+			"source": {Name: "source", Header: []string{"id", "name", "value"}},
+			"target": {Name: "target", Header: []string{"id"}},
+		}
+		table := model.Table{Name: "target", Columns: []model.Column{{Name: "wrong_ref"}}}
+		err := generator.Generate(table, model.Column{}, files)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "missing match column")
+	})
+
 }
 
-func TestOnceGenerator_Generate_EmptySourceTable(t *testing.T) {
-	// Setup
-	generator := OnceGenerator{
-		Table:  "source_table",
-		Column: "unique_ids",
-	}
-
-	table := model.Table{Name: "test_table"}
-	column := model.Column{
-		Name: "test_column",
-		Generator: model.RawMessage{
-			UnmarshalFunc: func(v interface{}) error {
-				*(v.(*OnceGenerator)) = generator
-				return nil
-			},
+func TestOnceGenerator_findUnusedValue(t *testing.T) {
+	generator := OnceGenerator{}
+	sourceFile := model.CSVFile{
+		Lines: [][]string{
+			{"1", "2", "3", "4"},
+			{"Alice", "Bob", "Alice", "Bob"},
+			{"A", "B", "C", "D"},
 		},
 	}
 
-	files := map[string]model.CSVFile{
-		"source_table": {
-			Name:   "source_table",
-			Header: []string{"unique_ids"},
-			Lines:  [][]string{{}},
-		},
-		"test_table": {
-			Name:   "test_table",
-			Header: []string{"test_column"},
-			Lines:  [][]string{{}},
-		},
-	}
+	t.Run("Find unused value", func(t *testing.T) {
+		usedValues := map[string]bool{"A": true}
+		value, err := generator.findUnusedValue(sourceFile, 1, 2, "Alice", usedValues)
+		assert.NoError(t, err)
+		assert.Equal(t, "C", value)
+	})
 
-	// Execute
-	err := generator.Generate(table, column, files)
+	t.Run("No unused value found", func(t *testing.T) {
+		usedValues := map[string]bool{"A": true, "B": true, "C": true}
+		_, err := generator.findUnusedValue(sourceFile, 1, 2, "Alice", usedValues)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "no unused value found for match value Alice")
+	})
 
-	// Assert
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "no values found in column")
+	t.Run("No match found", func(t *testing.T) {
+		usedValues := map[string]bool{"A": true, "B": true, "C": true}
+		_, err := generator.findUnusedValue(sourceFile, 1, 2, "David", usedValues)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "no match found for David")
+	})
 }
