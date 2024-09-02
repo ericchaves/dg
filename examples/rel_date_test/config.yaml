@@ -26,7 +26,7 @@ tables:
       - name: relative_from_column
         type: rel_date
         processor:
-          date: 'relative_from_date'
+          date: date(relative_from_date)
           unit: year
           after: 4
           before: 4

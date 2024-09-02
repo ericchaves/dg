@@ -44,7 +44,7 @@ tables:
       - name: installment_value
         type: expr
         processor:
-          expression: total / installments
+          expression: float(total) / int(installments)
           format: '%.4f'
       - name: max_loan
         type: expr

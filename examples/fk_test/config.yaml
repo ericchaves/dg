@@ -27,7 +27,7 @@ tables:
         processor:
           table: orders 
           column: order_id
-          repeat: parent.item_count
+          repeat: int(parent.item_count)
       - name: item_name
         type: gen
         processor:

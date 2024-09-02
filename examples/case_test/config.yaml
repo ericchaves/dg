@@ -21,31 +21,31 @@ tables:
       - name: greeting
         type: case
         processor:
-          - when: age <= 5 && gender == 'male'
+          - when: int(age) <= 5 && gender == 'male'
             then: 'Little guy'
-          - when: age <= 5 && gender == 'female'
+          - when: int(age) <= 5 && gender == 'female'
             then: 'Little girl'
-          - when: age > 5 && age <= 10 && gender == 'male'
+          - when: int(age) > 5 && int(age) <= 10 && gender == 'male'
             then: 'Buddy'
-          - when: age > 5 && age <= 10 && gender == 'female'
+          - when: int(age) > 5 && int(age) <= 10 && gender == 'female'
             then: 'Sweetie'
-          - when: age > 10 && age <= 15 && gender == 'male'
+          - when: int(age) > 10 && int(age) <= 15 && gender == 'male'
             then: "'Hey, young man'"
-          - when: age > 10 && age <= 15 && gender == 'female'
+          - when: int(age) > 10 && int(age) <= 15 && gender == 'female'
             then: "'Hey, young lady'"
-          - when: age > 15 && age <= 20 && gender == 'male'
+          - when: int(age) > 15 && int(age) <= 20 && gender == 'male'
             then: "'Whats up, dude?'"
-          - when: age > 15 && age <= 20 && gender == 'female'
+          - when: int(age) > 15 && int(age) <= 20 && gender == 'female'
             then: "'Whats up, girl?'"
-          - when: age > 20 && age <= 30 && gender == 'male'
+          - when: int(age) > 20 && int(age) <= 30 && gender == 'male'
             then: "'Hey, man'"
-          - when: age > 20 && age <= 30 && gender == 'female'
+          - when: int(age) > 20 && int(age) <= 30 && gender == 'female'
             then: "'Hey, there'"
-          - when: age > 30 && age <= 40 && gender == 'male'
+          - when: int(age) > 30 && int(age) <= 40 && gender == 'male'
             then: "'Hello, mister'"
-          - when: age > 30 && age <= 40 && gender == 'female'
+          - when: int(age) > 30 && int(age) <= 40 && gender == 'female'
             then: "'Hello, madam'"
-          - when: age > 40 && gender == 'male'
+          - when: int(age) > 40 && gender == 'male'
             then: "'Good to see you, sir'"
-          - when: age > 40 && gender == 'female'
+          - when: int(age) > 40 && gender == 'female'
             then: "'Good to see you, madam'"
