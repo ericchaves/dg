@@ -162,25 +162,13 @@ func reorderColumns(c model.Config, tt ui.TimerFunc, files map[string]model.CSVF
 				continue
 			}
 			currentIndex := lo.IndexOf(file.Header, col.Name)
+			if currentIndex < 0 || currentIndex > len(file.Lines) {
+				return fmt.Errorf("column %s not found in file %s", col.Name, file.Name)
+			}
 			newHeader[i] = col.Name
 			newLines[i] = file.Lines[currentIndex]
 			i++
 		}
-		// for i, col := range model.Columns {
-		// 	oldIndex := -1
-		// 	for j, header := range file.Header {
-		// 		if header == col.Name {
-		// 			oldIndex = j
-		// 			break
-		// 		}
-		// 	}
-		// 	if oldIndex == -1 {
-		// 		continue
-		// 	}
-		// 	newHeader[i] = col.Name
-		// 	newLines[i] = file.Lines[oldIndex]
-		// }
-
 		file.Header = newHeader
 		file.Lines = newLines
 		files[model.Name] = file
@@ -319,14 +307,16 @@ func generateTable(t model.Table, files map[string]model.CSVFile, tt ui.TimerFun
 			if err := g.Generate(t, col, files); err != nil {
 				return fmt.Errorf("running case process for %s.%s: %w", t.Name, col.Name, err)
 			}
-		case "count_values":
-			var g generator.CountValuesGenerator
+
+		case "map":
+			var g generator.MapGenerator
 			if err := col.Generator.UnmarshalFunc(&g); err != nil {
-				return fmt.Errorf("parsing count_values process for %s: %w", col.Name, err)
+				return fmt.Errorf("parsing map process for %s: %w", col.Name, err)
 			}
 			if err := g.Generate(t, col, files); err != nil {
-				return fmt.Errorf("running count_values process for %s.%s: %w", t.Name, col.Name, err)
+				return fmt.Errorf("running map process for %s.%s: %w", t.Name, col.Name, err)
 			}
+
 		case "once":
 			var g generator.OnceGenerator
 			if err := col.Generator.UnmarshalFunc(&g); err != nil {
@@ -334,6 +324,15 @@ func generateTable(t model.Table, files map[string]model.CSVFile, tt ui.TimerFun
 			}
 			if err := g.Generate(t, col, files); err != nil {
 				return fmt.Errorf("running once process for %s.%s: %w", t.Name, col.Name, err)
+			}
+
+		case "lookup":
+			var g generator.LookupGenerator
+			if err := col.Generator.UnmarshalFunc(&g); err != nil {
+				return fmt.Errorf("parsing lookup process for %s: %w", col.Name, err)
+			}
+			if err := g.Generate(t, col, files); err != nil {
+				return fmt.Errorf("running lookup process for %s.%s: %w", t.Name, col.Name, err)
 			}
 		}
 	}

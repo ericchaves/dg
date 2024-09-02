@@ -37,7 +37,7 @@ func TestOnceGenerator_Generate_Unique(t *testing.T) {
 		SourceColumn: "name",
 		SourceValue:  "value",
 		MatchColumn:  "ref",
-		Exactly:      true,
+		Unique:       true,
 	}
 
 	table := model.Table{
@@ -89,7 +89,7 @@ func TestOnceGenerator_Generate_NonUnique(t *testing.T) {
 		SourceColumn: "name",
 		SourceValue:  "value",
 		MatchColumn:  "ref",
-		Exactly:      false,
+		Unique:       false,
 	}
 
 	table := model.Table{

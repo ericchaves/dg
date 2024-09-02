@@ -34,7 +34,7 @@ tables:
           type: int
           low: 2
           high: 12
-      - name: total
+      - name: due_amount
         type: rand
         processor:
           type: float64
@@ -44,7 +44,7 @@ tables:
       - name: installment_value
         type: expr
         processor:
-          expression: float(total) / int(installments)
+          expression: float(due_amount) / int(installments)
           format: '%.4f'
       - name: max_loan
         type: expr

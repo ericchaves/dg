@@ -12,7 +12,7 @@ type OnceGenerator struct {
 	SourceColumn string `yaml:"source_column"`
 	SourceValue  string `yaml:"source_value"`
 	MatchColumn  string `yaml:"match_column"`
-	Exactly      bool   `yaml:"unique"`
+	Unique       bool   `yaml:"unique"`
 }
 
 func (g OnceGenerator) Generate(t model.Table, col model.Column, files map[string]model.CSVFile) error {
@@ -52,7 +52,7 @@ func (g OnceGenerator) Generate(t model.Table, col model.Column, files map[strin
 		matchValue := matchColumn[currentMatchIndex]
 		var value string
 		var err error
-		if g.Exactly {
+		if g.Unique {
 			value, err = g.findUnusedValue(sourceFile, sourceColumnIndex, sourceValueIndex, matchValue, usedValues)
 		} else {
 			lastIndex, ok := lastIndexes[matchValue]

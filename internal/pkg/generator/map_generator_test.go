@@ -7,12 +7,12 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestCountValuesGenerator_Generate(t *testing.T) {
+func TestCounterGenerator_Generate(t *testing.T) {
 	// Setup
-	generator := CountValuesGenerator{
+	generator := MapGenerator{
 		Table:      "test_table",
 		Column:     "test_column",
-		Expression: "string(ITN) + ':' + string(VALUE) + ':' + string(COUNT)",
+		Expression: "string(index) + ':' + string(value) + ':' + string(count)",
 	}
 
 	table := model.Table{Name: "test_table"}
@@ -20,7 +20,7 @@ func TestCountValuesGenerator_Generate(t *testing.T) {
 		Name: "test_column",
 		Generator: model.RawMessage{
 			UnmarshalFunc: func(v interface{}) error {
-				*(v.(*CountValuesGenerator)) = generator
+				*(v.(*MapGenerator)) = generator
 				return nil
 			},
 		},
@@ -49,12 +49,12 @@ func TestCountValuesGenerator_Generate(t *testing.T) {
 	assert.ElementsMatch(t, expectedValues, newColumn)
 }
 
-func TestCountValuesGenerator_Generate_EmptyTable(t *testing.T) {
+func TestCounterGenerator_Generate_EmptyTable(t *testing.T) {
 	// Setup
-	generator := CountValuesGenerator{
+	generator := MapGenerator{
 		Table:      "empty_table",
 		Column:     "test_column",
-		Expression: "{VALUE}:{COUNT}",
+		Expression: "{value}:{count}",
 	}
 
 	table := model.Table{Name: "empty_table"}
@@ -62,7 +62,7 @@ func TestCountValuesGenerator_Generate_EmptyTable(t *testing.T) {
 		Name: "test_column",
 		Generator: model.RawMessage{
 			UnmarshalFunc: func(v interface{}) error {
-				*(v.(*CountValuesGenerator)) = generator
+				*(v.(*MapGenerator)) = generator
 				return nil
 			},
 		},

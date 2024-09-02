@@ -6,7 +6,7 @@ import (
 	"github.com/samber/lo"
 )
 
-const LN = "LN"
+const ROW_NUMBER = "row_number"
 
 // CSVFile represents the content of a CSV file.
 type CSVFile struct {
@@ -100,7 +100,7 @@ func (c *CSVFile) GetRecord(lineNumber int) map[string]any {
 			record[header] = nil
 		}
 	}
-	record[LN] = lineNumber
+	record[ROW_NUMBER] = lineNumber
 	if empty {
 		return map[string]any{}
 	}

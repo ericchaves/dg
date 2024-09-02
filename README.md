@@ -28,7 +28,7 @@ A fast data generator that produces CSV files from generated relational data.
      - [rel_date](#rel_date)
      - [case](#case)
      - [fk](#fk)
-     - [count_values](#count_values)
+     - [map](#map)
      - [once](#once)
 1. [Inputs](#inputs)
    - [csv](#csv)
@@ -667,7 +667,7 @@ Since column values are generated as strings, you must use expr's type functions
       type: int
       low: 2
       high: 12
-  - name: total
+  - name: due_amount
     type: rand
     processor:
       type: float64
@@ -677,7 +677,7 @@ Since column values are generated as strings, you must use expr's type functions
   - name: installment_value
     type: expr
     processor:
-      expression: 'int(total) / int(installments)'
+      expression: 'float(due_amount) / int(installments)'
       format: '%.4f'
 ```
 
@@ -828,8 +828,6 @@ Creates a number of rows for each value in another table, facilitating the creat
 
 The `repeat` parameter is an expr expression used to determine how many times each parent value should be used.
 
-Valid examples are `repeat: '3'`, `repeat: "3"` and `repeat: 'some_field * 3'` but `repeat: 3` is invalid.
-
 Parent columns can be referenced using the notation `parent.column_name`, and other column values of the same row can be referenced by their name.
 
 You can limit the total number of records in the child table by providing a `Count` value.
@@ -871,30 +869,27 @@ tables:
           value: ${breakfast}
 ```
 
-#### count_values
+#### map
 
-The `count_values` generator counts the occurrences of each unique value in a specified column from a source table. It then generates a new column with each value repeated based on its count. This generator is useful for creating distributions or frequency-based data sets. The `expression` parameter is evaluated using the expr generator, allowing for flexible data generation.
+The `map` generator counts the occurrences of each unique value in a specified column from a source table. It then generates a new column with each value repeated based on its count. This generator is useful for creating distributions or frequency-based data sets. The `expression` parameter is evaluated using the expr generator, allowing for flexible data generation.
 
 The following custom variables are available for use in expressions:
 
-* **LN**: Represents the generated line number, provided as an integer.
-* **VALUE**: Refers to the current value, formatted as a string.
-* **COUNT**: Indicates the number of occurrences of **VALUE**, expressed as an integer.
-* **ITN**: Denotes the current iterator number for **VALUE** (e.g., 1 of 3, 2 of 3, etc.).
+* **row_number**: Represents the generated line number, provided as an integer.
+* **value**: Refers to the current value, formatted as a string.
+* **count**: Indicates the number of occurrences of **value**, expressed as an integer.
+* **index**: Denotes the current iterator number for **value** (e.g., 1 of 3, 2 of 3, etc.).
 * **Example** YAML configuration:
 
 ```yaml
 - name: value_counts
-  type: count_values
+  type: map
   processor:
     table: source_table
     column: category
-    expression: "string(ITN) + ':' + string(VALUE) + ':' + string(COUNT)"
+    expression: "string(index) + ':' + string(value) + ':' + string(count)"
 ```
-
-In this example, for each unique value in the 'category' column of 'source_table', it generates a string combining the line number (ITN), the value itself (VALUE), and its count (COUNT).
-
-If you want to count values from another column of the current table you can ommit `table` parameter. 
+If you want to count values from another column of the current table you can ommit `table` parameter.
 
 #### once
 
@@ -920,6 +915,36 @@ In this example, the generator will:
 2. Match the 'match_column' in the current table with the 'source_column' in the source table.
 3. When a match is found, it will assign the corresponding value from the 'source_value' column.
 4. Each value from 'source_value' is used only once.
+
+#### lookup
+
+The `Lookup` generator allows you to generate values for columns in a table based on search logic across multiple tables.
+
+It behaves like a join, starting from the current table as base table. For each value in the `match_column`, it will look up the value on `source_table`.`source_colum` and once found, it will pick the value from `source_value` column. This process continues for the next item in the `tables` until it reaches the end, returning the last value of `source_value` to be used.
+
+The `ignore_missing` attribute determines how the generator handles lookup failures. If `true`, the generator will ignore missing values and continue processing, using an empty value, similar to a left join. If `false`, it stops and returns an error when a value is not found. When omitted the default value `false` is assumed. 
+
+```yaml
+- name: last_purchase
+  type: lookup
+  processor:
+    ignore_missing: true
+    match_column: "customer_name"
+    tables:
+    - source_table: "customers"  # Name of the lookup table
+      source_column: "name"      # Column in the lookup table to match
+      source_value: "id"         # Column whose value should be returned
+    - source_table: "orders"
+      source_column: "customer_id"
+      source_value: "order_date"
+```
+
+In this example, the generator will:
+1. Start by finding the `customer_name` in the `customers` table.
+1. Then, it retrieves the value under the `id` column for the same row.
+1. Next, the returned `id` is used to search in the `orders` table under the `customer_id` column.
+1. If a match is found, it retrieves the value from the `order_date` column.
+1. The retrieved `order_date` value is used to generate new data for the target column in the base table.
 
 ### Inputs
 
