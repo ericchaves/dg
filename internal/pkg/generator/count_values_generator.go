@@ -15,6 +15,9 @@ type CountValuesGenerator struct {
 }
 
 func (g CountValuesGenerator) Generate(t model.Table, col model.Column, files map[string]model.CSVFile) error {
+	if g.Table == "" {
+		g.Table = t.Name
+	}
 	refFile, ok := files[g.Table]
 	if !ok {
 		return fmt.Errorf("referenced table %s not found", g.Table)

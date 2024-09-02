@@ -894,11 +894,13 @@ The following custom variables are available for use in expressions:
 
 In this example, for each unique value in the 'category' column of 'source_table', it generates a string combining the line number (ITN), the value itself (VALUE), and its count (COUNT).
 
+If you want to count values from another column of the current table you can ommit `table` parameter. 
+
 #### once
 
-The `once` generator reads values from a specified column in a source table and assigns them to rows in the target table, matching values based on a specified column in the target table, like the `match` generator, but ensuring that each value is used only once. 
+The `once` generator reads values from a specified column in a source table and assigns them to rows in the target table, matching values based on a specified column in the target table, like the `match` generator.
 
-This generator is useful when you need to assign unique values from a predefined set without repetition, while maintaining a relationship with another column.
+The `exactly` parameter is optional, and when true, the generator will ensure that each value is used only once. When `exactly` is false (its default) the generator will cycle through each available value if needed.  
 
 **Example** YAML configuration:
 
@@ -910,6 +912,7 @@ This generator is useful when you need to assign unique values from a predefined
     source_column: unique_ids
     source_value: value_column
     match_column: match_column
+    exactly: true
 ```
 
 In this example, the generator will:
@@ -917,8 +920,6 @@ In this example, the generator will:
 2. Match the 'match_column' in the current table with the 'source_column' in the source table.
 3. When a match is found, it will assign the corresponding value from the 'source_value' column.
 4. Each value from 'source_value' is used only once.
-
-If there are no unused values left for a particular match, or if no match is found, the generator will return an error.
 
 ### Inputs
 

@@ -149,32 +149,41 @@ func generateTables(c model.Config, tt ui.TimerFunc, files map[string]model.CSVF
 func reorderColumns(c model.Config, tt ui.TimerFunc, files map[string]model.CSVFile) error {
 	defer tt(time.Now(), "reorder all table columns")
 
-	for _, table := range c.Tables {
-		file, ok := files[table.Name]
+	for _, model := range c.Tables {
+		file, ok := files[model.Name]
 		if !ok {
 			continue // Skip if the file doesn't exist
 		}
-		// Reorder columns
-		newHeader := make([]string, len(table.Columns))
+		newHeader := make([]string, len(file.Header))
 		newLines := make([][]string, len(file.Lines))
-		for i, col := range table.Columns {
-			oldIndex := -1
-			for j, header := range file.Header {
-				if header == col.Name {
-					oldIndex = j
-					break
-				}
-			}
-			if oldIndex == -1 {
+		i := 0
+		for _, col := range model.Columns {
+			if col.Suppress {
 				continue
 			}
+			currentIndex := lo.IndexOf(file.Header, col.Name)
 			newHeader[i] = col.Name
-			newLines[i] = file.Lines[oldIndex]
+			newLines[i] = file.Lines[currentIndex]
+			i++
 		}
+		// for i, col := range model.Columns {
+		// 	oldIndex := -1
+		// 	for j, header := range file.Header {
+		// 		if header == col.Name {
+		// 			oldIndex = j
+		// 			break
+		// 		}
+		// 	}
+		// 	if oldIndex == -1 {
+		// 		continue
+		// 	}
+		// 	newHeader[i] = col.Name
+		// 	newLines[i] = file.Lines[oldIndex]
+		// }
 
 		file.Header = newHeader
 		file.Lines = newLines
-		files[table.Name] = file
+		files[model.Name] = file
 	}
 
 	return nil

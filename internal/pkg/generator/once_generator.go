@@ -12,6 +12,7 @@ type OnceGenerator struct {
 	SourceColumn string `yaml:"source_column"`
 	SourceValue  string `yaml:"source_value"`
 	MatchColumn  string `yaml:"match_column"`
+	Exactly      bool   `yaml:"unique"`
 }
 
 func (g OnceGenerator) Generate(t model.Table, col model.Column, files map[string]model.CSVFile) error {
@@ -44,9 +45,25 @@ func (g OnceGenerator) Generate(t model.Table, col model.Column, files map[strin
 
 	var lines []string
 	usedValues := make(map[string]bool)
+	lastIndexes := make(map[string]int)
+	lastMatchIndex := 0
 	for i := 0; i < t.Count; i++ {
-		matchValue := matchColumn[i]
-		value, err := g.findUnusedValue(sourceFile, sourceColumnIndex, sourceValueIndex, matchValue, usedValues)
+		currentMatchIndex := (lastMatchIndex + i) % len(matchColumn)
+		matchValue := matchColumn[currentMatchIndex]
+		var value string
+		var err error
+		if g.Exactly {
+			value, err = g.findUnusedValue(sourceFile, sourceColumnIndex, sourceValueIndex, matchValue, usedValues)
+		} else {
+			lastIndex, ok := lastIndexes[matchValue]
+			if !ok {
+				lastIndex = 0
+			}
+			value, lastIndex, err = g.findNextValue(sourceFile, sourceColumnIndex, sourceValueIndex, matchValue, lastIndex)
+			if err == nil {
+				lastIndexes[matchValue] = lastIndex
+			}
+		}
 		if err != nil {
 			return err
 		}
@@ -73,4 +90,18 @@ func (g OnceGenerator) findUnusedValue(sourceFile model.CSVFile, sourceColumnInd
 		return "", fmt.Errorf("no unused value found for match value %s", matchValue)
 	}
 	return "", fmt.Errorf("no match found for %s", matchValue)
+}
+
+func (g OnceGenerator) findNextValue(sourceFile model.CSVFile, sourceColumnIndex, sourceValueIndex int, matchValue string, lastIndex int) (string, int, error) {
+	sourceColumnValues := sourceFile.Lines[sourceColumnIndex]
+	sourceValueValues := sourceFile.Lines[sourceValueIndex]
+
+	for i := 0; i < len(sourceColumnValues); i++ {
+		currentIndex := (lastIndex + i) % len(sourceColumnValues)
+		if sourceColumnValues[currentIndex] == matchValue {
+			return sourceValueValues[currentIndex], currentIndex + 1, nil
+		}
+	}
+
+	return "", lastIndex, fmt.Errorf("no match found for %s", matchValue)
 }

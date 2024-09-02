@@ -7,8 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestOnceGenerator_Generate(t *testing.T) {
-	// Configuração do teste
+func TestOnceGenerator_Generate_Unique(t *testing.T) {
 	sourceTable := model.CSVFile{
 		Name:   "source",
 		Header: []string{"id", "name", "value"},
@@ -38,6 +37,7 @@ func TestOnceGenerator_Generate(t *testing.T) {
 		SourceColumn: "name",
 		SourceValue:  "value",
 		MatchColumn:  "ref",
+		Exactly:      true,
 	}
 
 	table := model.Table{
@@ -48,10 +48,8 @@ func TestOnceGenerator_Generate(t *testing.T) {
 
 	column := model.Column{Name: "new_value"}
 
-	// Execução do teste
 	err := generator.Generate(table, column, files)
 
-	// Verificações
 	assert.NoError(t, err)
 
 	generatedTable := files["target"]
@@ -60,6 +58,54 @@ func TestOnceGenerator_Generate(t *testing.T) {
 	assert.Equal(t, []string{"1", "2", "3"}, generatedTable.Lines[0])
 	assert.Equal(t, []string{"Alice", "Bob", "Alice"}, generatedTable.Lines[1])
 	assert.Equal(t, []string{"A", "B", "C"}, generatedTable.Lines[2])
+}
+func TestOnceGenerator_Generate_NonUnique(t *testing.T) {
+	sourceTable := model.CSVFile{
+		Name:   "source",
+		Header: []string{"id", "name", "value"},
+		Lines: [][]string{
+			{"1", "2", "3"},
+			{"Alice", "Bob", "Alice"},
+			{"A", "B", "C"},
+		},
+	}
+
+	targetTable := model.CSVFile{
+		Name:   "target",
+		Header: []string{"id", "ref"},
+		Lines: [][]string{
+			{"1", "2", "3", "4"},
+			{"Alice", "Bob", "Alice", "Bob"},
+		},
+	}
+
+	files := map[string]model.CSVFile{
+		"source": sourceTable,
+		"target": targetTable,
+	}
+
+	generator := OnceGenerator{
+		SourceTable:  "source",
+		SourceColumn: "name",
+		SourceValue:  "value",
+		MatchColumn:  "ref",
+		Exactly:      false,
+	}
+
+	table := model.Table{
+		Name:    "target",
+		Columns: []model.Column{{Name: "ref"}, {Name: "new_value"}},
+		Count:   6,
+	}
+
+	column := model.Column{Name: "new_value"}
+
+	err := generator.Generate(table, column, files)
+
+	assert.NoError(t, err)
+
+	generatedTable := files["target"]
+	assert.Equal(t, []string{"A", "B", "C", "B", "A", "B"}, generatedTable.Lines[2])
 }
 
 func TestOnceGenerator_Generate_ErrorCases(t *testing.T) {
