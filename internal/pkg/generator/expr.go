@@ -172,7 +172,7 @@ func (ec *ExprContext) searchFile(sourceFile model.CSVFile, sourceColumn, source
 	sourceColumnIndex := lo.IndexOf(sourceFile.Header, sourceColumn)
 	matchColumnIndex := lo.IndexOf(sourceFile.Header, matchColumn)
 	if sourceColumnIndex == -1 || matchColumnIndex == -1 {
-		return "", fmt.Errorf("column not found: %s ou %s", sourceColumn, matchColumn)
+		return "", fmt.Errorf("column not found: %s ou %s in %s", sourceColumn, matchColumn, sourceFile.Name)
 	}
 	_, index, found := lo.FindIndexOf(sourceFile.Lines[sourceColumnIndex], func(item string) bool {
 		return item == sourceValue

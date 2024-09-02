@@ -921,6 +921,36 @@ In this example, the generator will:
 3. When a match is found, it will assign the corresponding value from the 'source_value' column.
 4. Each value from 'source_value' is used only once.
 
+#### lookup
+
+The `Lookup` generator allows you to generate values for columns in a table based on search logic across multiple tables.
+
+It behaves like a join, starting from the current table as base table. For each value in the `match_column`, it will look up the value on `source_table`.`source_colum` and once found, it will pick the value from `source_value` column. This process continues for the next item in the `tables` until it reaches the end, returning the last value of `source_value` to be used.
+
+The `ignore_missing` attribute determines how the generator handles lookup failures. If `true`, the generator will ignore missing values and continue processing, using an empty value, similar to a left join. If `false`, it stops and returns an error when a value is not found. When omitted the default value `false` is assumed. 
+
+```yaml
+- name: last_purchase
+  type: lookup
+  processor:
+    ignore_missing: true
+    match_column: "customer_name"
+    tables:
+    - source_table: "customers"  # Name of the lookup table
+      source_column: "name"      # Column in the lookup table to match
+      source_value: "id"         # Column whose value should be returned
+    - source_table: "orders"
+      source_column: "customer_id"
+      source_value: "order_date"
+```
+
+In this example, the generator will:
+1. Start by finding the `customer_name` in the `customers` table.
+1. Then, it retrieves the value under the `id` column for the same row.
+1. Next, the returned `id` is used to search in the `orders` table under the `customer_id` column.
+1. If a match is found, it retrieves the value from the `order_date` column.
+1. The retrieved `order_date` value is used to generate new data for the target column in the base table.
+
 ### Inputs
 
 dg takes its configuration from a config file that is parsed in the form of an object containing arrays of objects; `tables` and `inputs`. Each object in the `inputs` array represents a data source from which a table can be created. Tables created via inputs will not result in output CSVs.
