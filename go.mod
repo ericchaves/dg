@@ -12,6 +12,7 @@ require (
 	github.com/samber/lo v1.44.0
 	github.com/stretchr/testify v1.9.0
 	gopkg.in/yaml.v3 v3.0.1
+	github.com/alpeb/go-finance v0.0.0-20211202201625-e4f601ef4382 
 )
 
 require (

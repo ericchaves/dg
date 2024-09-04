@@ -9,10 +9,10 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/alpeb/go-finance/fin"
+	"github.com/codingconcepts/dg/internal/pkg/model"
 	"github.com/expr-lang/expr"
 	"github.com/samber/lo"
-
-	"github.com/codingconcepts/dg/internal/pkg/model"
 )
 
 type ExprContext struct {
@@ -61,22 +61,21 @@ func (ec *ExprContext) makeEnv(record map[string]any) map[string]any {
 				return "", fmt.Errorf("error parsing days: %w", err)
 			}
 			var data time.Time
-			tipo := ec.getType(args[3])
-			switch tipo {
-			case "time.Time":
+			switch args[3].(type) {
+			case time.Time:
 				data = args[3].(time.Time)
 				return data.AddDate(years, months, days), nil
-			case "float64":
+			case float64:
 				float, _ := args[3].(float64)
 				sec := int64(float)
 				nano := int64((float - float64(sec)) * 1e9)
 				data = time.Unix(sec, nano)
 				return data.AddDate(years, months, days), nil
-			case "int":
+			case int:
 				sec := int64(args[3].(int))
 				data = time.Unix(sec, 0)
 				return data.AddDate(years, months, days), nil
-			case "string":
+			case string:
 				digits := regexp.MustCompile(`(\d)+`)
 				match := digits.FindAllString(ec.Format, -1)
 				if len(match) >= 3 {
@@ -145,8 +144,92 @@ func (ec *ExprContext) makeEnv(record map[string]any) map[string]any {
 			}
 			return r.Perm(n), nil
 		},
+		"get_record": func(args ...any) (map[string]any, error) {
+			if len(args) != 2 {
+				return map[string]any{}, fmt.Errorf("get_record function expects 2 arguments: get_record(table string, line int)")
+			}
+			table, line := args[0].(string), args[1].(int)
+			return model.GetRecord(table, line, ec.Files), nil
+		},
+		"get_column": func(args ...any) ([]string, error) {
+			if len(args) != 2 {
+				return []string{}, fmt.Errorf("get_record function expects 2 arguments: get_column(table string, column string)")
+			}
+			table, column := args[0].(string), args[1].(string)
+			return model.GetColumnValues(table, column, ec.Files), nil
+		},
+		"payments": func(args ...any) ([]float64, error) {
+			if len(args) != 3 {
+				return []float64{}, fmt.Errorf("payments function expects 3 arguments: payments(total float64, installments int, percentage float64)")
+			}
+			total, ok := args[0].(float64)
+			if !ok {
+				return []float64{}, fmt.Errorf("total must be a float64, got %T", args[0])
+			}
+			installments, ok := args[1].(int)
+			if !ok {
+				return []float64{}, fmt.Errorf("installments must be an int, got %T", args[1])
+			}
+			percentage, ok := args[2].(float64)
+			if !ok {
+				return []float64{}, fmt.Errorf("percentage must be a float64, got %T", args[2])
+			}
+
+			if installments <= 0 {
+				return []float64{}, fmt.Errorf("installments must be a positive int, got %d", installments)
+			}
+			if percentage < 0.0 || percentage > 1.0 {
+				return []float64{}, fmt.Errorf("percentage must be float64 between 0.0 and 1.0: %s", args[2])
+			}
+			if installments == 1 {
+				return []float64{total, 0.0}, nil
+			}
+			downPaymentAmount := total * percentage
+			remainingAmount := total - downPaymentAmount
+			installmentAmount := remainingAmount / float64(installments-1)
+			totalInstallments := installmentAmount * float64(installments-1)
+			difference := remainingAmount - totalInstallments
+
+			if math.Abs(difference) > 0 {
+				downPaymentAmount = downPaymentAmount + difference
+			}
+
+			result := []float64{downPaymentAmount, installmentAmount}
+			return result, nil
+		},
+		"pmt": func(args ...any) (float64, error) {
+			if len(args) != 5 {
+				return 0, fmt.Errorf("pmt expected 5 arguments: pmt(rate float64, nper int, pv float64, fv float64, type int)")
+			}
+			rate, ok := args[0].(float64)
+			if !ok {
+				return 0, fmt.Errorf("rate must be a float64 got %T", args[0])
+			}
+			nper, ok := args[1].(int)
+			if !ok {
+				return 0, fmt.Errorf("nper must be an int, got %T", args[1])
+			}
+			pv, ok := args[2].(float64)
+			if !ok {
+				return 0, fmt.Errorf("pv must be a float64, got %T", args[2])
+			}
+			fv, ok := args[3].(float64)
+			if !ok {
+				return 0, fmt.Errorf("fv must be a float64, got %T", args[3])
+			}
+			typ, ok := args[4].(int)
+			if !ok {
+				return 0, fmt.Errorf("type must be a bool, got %T", args[4])
+			}
+
+			result, err := fin.Payment(rate, nper, pv, fv, typ)
+			return result, err
+		},
 	}
 	for k, v := range record {
+		if _, has := env[k]; has {
+			env["fn_"+k] = env[k]
+		}
 		env[k] = v
 	}
 	return env
@@ -200,35 +283,55 @@ func (ec *ExprContext) searchRecord(sourceFile model.CSVFile, sourceColumn, sour
 	return map[string]any{}, fmt.Errorf("value not found for %s in column %s", sourceValue, sourceColumn)
 }
 
-func (ec *ExprContext) getType(value any) string {
-	return reflect.TypeOf(value).String()
-}
-
 func (ec *ExprContext) AnyToString(value any) string {
-	switch ec.getType(value) {
-	case "time.Time":
+	switch v := value.(type) {
+	case time.Time:
 		if ec.Format == "" {
 			ec.Format = "2006-01-02"
 		}
-		return value.(time.Time).Format(ec.Format)
-	case "float64":
+		return v.Format(ec.Format)
+	case float64:
 		if ec.Format == "" {
 			ec.Format = "%g"
 		}
-		return fmt.Sprintf(ec.Format, value.(float64))
-	case "int":
+		return fmt.Sprintf(ec.Format, v)
+	case int:
 		if ec.Format == "" {
 			ec.Format = "%d"
 		}
-		return fmt.Sprintf(ec.Format, value.(int))
-	case "bool":
+		return fmt.Sprintf(ec.Format, v)
+	case bool:
 		if ec.Format == "" {
 			ec.Format = "%t"
 		}
-		return fmt.Sprintf(ec.Format, value.(bool))
-	case "string":
-		return value.(string)
+		return fmt.Sprintf(ec.Format, v)
+	case string:
+		return v
 	default:
-		return fmt.Sprintf("%v", value)
+		return fmt.Sprintf("%q", value)
+	}
+}
+
+func (ec *ExprContext) AnyToBool(value any) bool {
+	if value == nil {
+		return false
+	}
+	switch v := value.(type) {
+	case bool:
+		return v
+	case int, int8, int16, int32, int64:
+		return reflect.ValueOf(v).Int() != 0
+	case uint, uint8, uint16, uint32, uint64:
+		return reflect.ValueOf(v).Uint() != 0
+	case float32, float64:
+		return reflect.ValueOf(v).Float() != 0
+	case string:
+		return v != ""
+	case []interface{}:
+		return len(v) > 0
+	case map[interface{}]interface{}:
+		return len(v) > 0
+	default:
+		return true
 	}
 }

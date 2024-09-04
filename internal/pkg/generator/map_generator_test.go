@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestCounterGenerator_Generate(t *testing.T) {
+func TestMapGenerator_Generate(t *testing.T) {
 	// Setup
 	generator := MapGenerator{
 		Table:      "test_table",
@@ -49,7 +49,7 @@ func TestCounterGenerator_Generate(t *testing.T) {
 	assert.ElementsMatch(t, expectedValues, newColumn)
 }
 
-func TestCounterGenerator_Generate_EmptyTable(t *testing.T) {
+func TestMapGenerator_Generate_EmptyTable(t *testing.T) {
 	// Setup
 	generator := MapGenerator{
 		Table:      "empty_table",

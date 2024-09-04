@@ -1,3 +1,5 @@
+github.com/alpeb/go-finance v0.0.0-20211202201625-e4f601ef4382 h1:Y2eMGogKpDG+v2Z8CCC6TeVXwX2z80nSOtnGh91LzC4=
+github.com/alpeb/go-finance v0.0.0-20211202201625-e4f601ef4382/go.mod h1:ayCyM8poYTCxdqmF3hfMbZCXlIEQe1HSNULeK9RAuf0=
 github.com/brianvoe/gofakeit/v7 v7.0.4 h1:Mkxwz9jYg8Ad8NvT9HA27pCMZGFQo08MK6jD0QTKEww=
 github.com/brianvoe/gofakeit/v7 v7.0.4/go.mod h1:QXuPeBw164PJCzCUZVmgpgHJ3Llj49jSLVkKPMtxtxA=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=

@@ -12,6 +12,7 @@ type ForeignKeyGenerator struct {
 	ReferenceAs string `yaml:"reference_as"`
 	Column      string `yaml:"column"`
 	Repeat      string `yaml:"repeat"`
+	Filter      string `yaml:"filter"`
 }
 
 func (g ForeignKeyGenerator) Generate(t model.Table, files map[string]model.CSVFile) error {
@@ -50,11 +51,21 @@ func (g ForeignKeyGenerator) generate(t model.Table, col model.Column, files map
 	rows := 0
 	for i, val := range refValues {
 		repeat := 1
+		ec := &ExprContext{Files: files}
+		env := ec.makeEnvFromLine(t.Name, i)
+		parent := refFile.GetRecord(i)
+		env[refAs] = parent
+		if g.Filter != "" {
+			output, err := ec.evaluate(g.Filter, env)
+			if err != nil {
+				return err
+			}
+			skip := ec.AnyToBool(output)
+			if skip {
+				continue
+			}
+		}
 		if g.Repeat != "" {
-			ec := &ExprContext{Files: files}
-			env := ec.makeEnvFromLine(t.Name, i)
-			parent := refFile.GetRecord(i)
-			env[refAs] = parent
 			output, err := ec.evaluate(g.Repeat, env)
 			if err != nil {
 				return err

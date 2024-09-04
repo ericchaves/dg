@@ -51,3 +51,7 @@ tables:
         processor:
           expression: float(match('persons','person_id', billing_id, 'salary')) / 0.3
           format: '%.2f'
+      - name: ranged
+        type: expr
+        processor:
+          expression: 1..12 # will stop at 10 due to table count

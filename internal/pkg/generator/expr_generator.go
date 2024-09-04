@@ -2,6 +2,7 @@ package generator
 
 import (
 	"fmt"
+	"reflect"
 
 	"github.com/codingconcepts/dg/internal/pkg/model"
 	"github.com/samber/lo"
@@ -25,13 +26,28 @@ func (g ExprGenerator) Generate(t model.Table, c model.Column, files map[string]
 	ec := &ExprContext{Files: files, Format: g.Format}
 	var lines []string
 	for i := 0; i < t.Count; i++ {
+		if len(lines) == t.Count {
+			break
+		}
 		env := ec.makeEnvFromLine(t.Name, i)
 		result, err := ec.evaluate(g.Expression, env)
 		if err != nil {
 			return fmt.Errorf("error evaluating expression %w", err)
 		}
-		line := ec.AnyToString(result)
-		lines = append(lines, line)
+		items := reflect.ValueOf(result)
+		if items.Kind() == reflect.Array || items.Kind() == reflect.Slice {
+			for j := 0; j < items.Len(); j++ {
+				item := items.Index(j)
+				line := ec.AnyToString(item.Interface())
+				lines = append(lines, line)
+				if len(lines) == t.Count {
+					break
+				}
+			}
+		} else {
+			line := ec.AnyToString(result)
+			lines = append(lines, line)
+		}
 	}
 	AddTable(t, c.Name, lines, files)
 	return nil

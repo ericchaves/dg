@@ -290,6 +290,42 @@ func TestGeneratorExprMinMaxFunctions(t *testing.T) {
 	}
 }
 
+func TestGeneratorExprArrayValues(t *testing.T) {
+	table := model.Table{
+		Name:  "table",
+		Count: 3,
+	}
+
+	column := model.Column{
+		Name: "array_column",
+	}
+
+	files := map[string]model.CSVFile{
+		"table": {
+			Name:   "table",
+			Header: []string{"counter"},
+			Lines: [][]string{
+				{"1", "2", "3"},
+			},
+		},
+	}
+
+	g := ExprGenerator{
+		Expression: "1..int(counter)",
+	}
+
+	err := g.Generate(table, column, files)
+	assert.Nil(t, err)
+
+	generatedValues := files["table"].Lines[1]
+	expectedValues := []string{"1", "1", "2"}
+
+	assert.Equal(t, len(expectedValues), len(generatedValues))
+	for _, expected := range expectedValues {
+		assert.Contains(t, generatedValues, expected)
+	}
+}
+
 func TestGeneratorExprMatchFunction(t *testing.T) {
 	cases := []struct {
 		name       string

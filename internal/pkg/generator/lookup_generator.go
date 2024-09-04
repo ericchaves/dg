@@ -12,6 +12,8 @@ type LookupTable struct {
 	SourceTable  string `yaml:"source_table"`
 	SourceColumn string `yaml:"source_column"`
 	SourceValue  string `yaml:"source_value"`
+	Format       string `yaml:"format"`
+	Expression   string `yaml:"expression"`
 }
 
 type LookupGenerator struct {
@@ -67,17 +69,27 @@ func (g LookupGenerator) generate(matchValue string, lookupTables []LookupTable,
 	env := make(map[string]any)
 	repeat := 1
 	for _, lookup := range lookupTables {
+		ec.Format = lookup.Format
 		sourceFile, ok := files[lookup.SourceTable]
 		if !ok {
 			return []string{}, fmt.Errorf("lookup table %s not found", lookup.SourceTable)
 		}
 		record, err := ec.searchRecord(sourceFile, lookup.SourceColumn, value, lookup.SourceValue)
+		env = ec.makeEnv(record)
 		if err != nil {
 			return []string{}, err
 		}
-		env[lookup.SourceTable] = record
-		value = ec.AnyToString(record[lookup.SourceValue])
+		if lookup.Expression != "" {
+			anyValue, err := ec.evaluate(lookup.Expression, env)
+			if err != nil {
+				return []string{}, err
+			}
+			value = ec.AnyToString(anyValue)
+		} else {
+			value = ec.AnyToString(env[lookup.SourceValue])
+		}
 	}
+
 	if g.Repeat != "" {
 		output, err := ec.evaluate(g.Repeat, env)
 		if err != nil {

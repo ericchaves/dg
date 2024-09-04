@@ -70,6 +70,14 @@ func GetRecord(table string, lineNumber int, files map[string]CSVFile) map[strin
 	return refFile.GetRecord(lineNumber)
 }
 
+func GetColumnValues(table string, columnName string, files map[string]CSVFile) []string {
+	refFile, ok := files[table]
+	if !ok {
+		return []string{}
+	}
+	return refFile.GetColumnValues(columnName)
+}
+
 func (c *CSVFile) GetColumnValues(columnName string) []string {
 	columnIndex := -1
 	for i, header := range c.Header {

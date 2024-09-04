@@ -22,23 +22,28 @@ func (g MapGenerator) Generate(t model.Table, col model.Column, files map[string
 	if !ok {
 		return fmt.Errorf("referenced table %s not found", g.Table)
 	}
-	ec := &ExprContext{Files: files}
+	ec := &ExprContext{Files: files, Format: g.Format}
 	columnValues := refFile.GetColumnValues(g.Column)
 	countValues := lo.CountValues(columnValues)
+	indexValues := make(map[string]int, len(countValues))
 	var lines []string
-	j := 0
-	for value, count := range countValues {
-		for i := 1; i <= count; i++ {
-			env := ec.makeEnvFromLine(t.Name, j)
-			env["index"] = i
-			env["count"] = count
-			env["value"] = value
-			result, err := ec.evaluate(g.Expression, env)
-			if err != nil {
-				return fmt.Errorf("error evaluating expression for count %d of value %s", count, value)
-			}
-			line := ec.AnyToString(result)
-			lines = append(lines, line)
+	for row, value := range columnValues {
+		if _, ok := indexValues[value]; !ok {
+			indexValues[value] = 1
+		}
+		env := ec.makeEnvFromLine(t.Name, row)
+		env["index"] = indexValues[value]
+		env["count"] = countValues[value]
+		env["value"] = value
+		result, err := ec.evaluate(g.Expression, env)
+		if err != nil {
+			return fmt.Errorf("error evaluating expression for row %d of value %s", row, value)
+		}
+		line := ec.AnyToString(result)
+		lines = append(lines, line)
+		indexValues[value] = indexValues[value] + 1
+		if t.Count > 0 && row >= t.Count {
+			break
 		}
 	}
 

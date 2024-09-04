@@ -657,6 +657,15 @@ You can use `format` attribute to ensure the requirements of your data shape:
       format: '%.2f'
 ```
 
+If expression returns an array of values, each value will be used to generate the column value without exceeding the current table count.
+
+```yaml
+- name: formatted_value
+    type: expr
+    processor:
+      expression: 1..3
+```
+
 Values from the same table row can be used in the expression by using the name of the column.
 Since column values are generated as strings, you must use expr's type functions to convert the string value into the the proper type for the operation. 
 
@@ -681,6 +690,20 @@ Since column values are generated as strings, you must use expr's type functions
       format: '%.4f'
 ```
 
+AML can be tricky when handling quotes, so when an expression requires quotes (such as when returning string values) or becomes more complex, we recommend using block-style indicators (`|` or `>`) for writing expressions.
+
+```yaml
+  - name: const_value
+    type: expr
+    processor:
+      expression: >
+        'hello!'
+  - name: float_value
+    type: expr
+    processor:
+      expression: >
+        float(due_amount) / int(installments)
+```
 You can also reference other tables values using the `match` function in an expression. The `match`function works pretty much like [match](#match) generator, expecting 4 input string parameters: `source_table`,`source_column`,`source_value` and `match_column`.
 
 ```yaml
@@ -717,7 +740,7 @@ tables:
           format: '%.2f'
 ```
 
-The full list of custom functions available inside expressions are:
+The list of custom functions (beyond expr-lang internal functions) available inside expressions are:
 
 - match(sourceTable string, sourceColumn string, sourceValue string, matchColumn string) *returns the `matchColumn` from `sourceTable` where `sourceColumn` has `SourceValue`*
 - add_date(years int, months int, days int, date string) *Adds the specified numbers of `years`,`months` and `days` to the given `date`*
@@ -726,6 +749,12 @@ The full list of custom functions available inside expressions are:
 - rand_range(min int, max int) *returns a pseudo-random integer between `min` and `max`, inclusive. Accepts both positive and negative values*
 - rand_float64() *returns a pseudo-random positive float64, as in the [math/rand package](https://pkg.go.dev/math/rand)*
 - rand_perm(n int) *returns a pseudo-random permutation of the numbers [0, `n`), as in the [math/rand package](https://pkg.go.dev/math/rand)*
+- get_record(table string, line int) *returns a map[string]any with the row value for a given line of a in memory (processed) table*
+- get_column(table string, column string) *returns a [string]string with all column values of a in memory (processed) table*
+- fn_payments(total float64, installments int, percentage float64) *returns a []float64, calculates the down payment and equal installment amounts based on a specified down payment percentage and number of installments*
+- fn_pmt(rate float64, nper int, pv float64, fv float64, type int) *returns float64 fixed payment (principal + rate of interest) against a loan (fv=0) or future value given a initial deposit (pv). type indicates whether payment is made at the beginning (1) or end (0) of each period (nper)*
+
+When expr detects collision between the name of a custom functions and column names, the custom function will be temporarily to renamed to `fn_<function_name>`. 
 
 #### rand
 
@@ -808,18 +837,44 @@ You can pass a expr expression on `date`,`before` and `after` parameters, which 
 
 The `case` generator evaluates a set of conditions composed of `when` and `then` expressions.
 Each condition is evaluated in order, and when the first `when` expression evaluates to `true` the `then` is evaluated to produce the column value.
-All functionalities of the [expr generator](#expr) can be used in the `When` and `Value` expressions.
+All functionalities of the [expr generator](#expr) can be used in the `When` and `Value` expressions. 
+
+YAML can be tricky when handling quotes, so we recommend using block-style indicators (`|` or `>`) for writing expressions.
 
 ```yaml
 - name: greeting
   type: case
   processor:
-    - when: "int(age) <= 5 && gender == 'male'"
-      then: 'Little guy'
-    - when: "int(age) <= 5 && gender == 'female'"
-      then: 'Little girl'
-    - when: 'true'
-      then: 'Hi'
+    - when: > 
+        int(age) <= 5 && gender == 'male'
+      then: > 
+        'Little guy'
+    - when: > 
+        int(age) <= 5 && gender == 'female'
+      then: > 
+        'Little girl'
+    - when: > 
+      'true'
+      then: > 
+        'Hi'
+```
+
+Each condition can define it's own `format` attribute to control the formatted output value.
+
+```yaml
+- name: revenue
+  type: case
+  processor:
+    - when: >
+        int(age) <= 5
+      then: >
+        float(allowance)
+      format: '%.2f'
+    - when: > 
+        int(age) > 5
+      then: >
+        float(salary)
+      format: '%.3f'
 ```
 
 #### FK
@@ -827,6 +882,8 @@ All functionalities of the [expr generator](#expr) can be used in the `When` and
 The `fk` generator is usefull when we need to reference value from a parent `table` to build 1:1 or 1:N relations.
 
 The `repeat` parameter is an [expr](#expr) expression that need to evaluate to an int in order to determine how many times each parent value should be used. You can reference parent columns using the notation `parent.column_name`.
+
+You can apply a `filter` [expr](#expr) expression that evaluates to bool to skip some rows.
 
 The current table being generated has a `count` value it may limit the number of values created even if repeat x length(parent.column_name) is bigger than `count`.
 
@@ -873,10 +930,10 @@ The `map` generator counts the occurrences of each unique value in a specified c
 
 The following custom variables are available for use in expressions:
 
-* **row_number**: Represents the generated line number, provided as an integer.
+* **row_number**: Represents the generated line number, provided as an integer. Start with 0.
 * **value**: Refers to the current value, formatted as a string.
 * **count**: Indicates the number of occurrences of **value**, expressed as an integer.
-* **index**: Denotes the current iterator number for **value** (e.g., 1 of 3, 2 of 3, etc.).
+* **index**: Denotes the current iterator number for **value** (e.g., 1 of 3, 2 of 3, etc.) starting with 1.
 * **Example** YAML configuration:
 
 ```yaml
@@ -888,6 +945,7 @@ The following custom variables are available for use in expressions:
     expression: "string(index) + ':' + string(value) + ':' + string(count)"
 ```
 If you want to count values from another column of the current table you can ommit `table` parameter.
+You can use `format` to control the formatted output value. 
 
 #### once
 
@@ -945,6 +1003,24 @@ In this example, the generator will:
 1. Next, the returned `id` is used to search in the `orders` table under the `customer_id` column.
 1. If a match is found, it retrieves the value from the `order_date` column.
 1. The retrieved `order_date` value is used to generate new data for the target column in the base table.
+
+You can set `format` for each table to control the formatted output value.
+
+```yaml
+- name: last_purchase
+  type: lookup
+  processor:
+    ignore_missing: true
+    match_column: "customer_name"
+    tables:
+    - source_table: "customers"  # Name of the lookup table
+      source_column: "name"      # Column in the lookup table to match
+      source_value: "id"         # Column whose value should be returned
+    - source_table: "orders"
+      source_column: "customer_id"
+      source_value: "order_date"
+      format: '02-01-2006'
+```
 
 ### Inputs
 
