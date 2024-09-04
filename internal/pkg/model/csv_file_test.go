@@ -129,9 +129,9 @@ func TestGetLineValues(t *testing.T) {
 		lineNumber int
 		expected   map[string]any
 	}{
-		{"Valid line 0", 0, map[string]any{"col_1": "a", "col_2": "b", "col_3": "c", "LN": 0}},
-		{"Valid line 1", 1, map[string]any{"col_1": "d", "col_2": "e", "col_3": "f", "LN": 1}},
-		{"Valid line 2", 2, map[string]any{"col_1": "g", "col_2": "h", "col_3": "i", "LN": 2}},
+		{"Valid line 0", 0, map[string]any{"col_1": "a", "col_2": "b", "col_3": "c", "row_number": 0}},
+		{"Valid line 1", 1, map[string]any{"col_1": "d", "col_2": "e", "col_3": "f", "row_number": 1}},
+		{"Valid line 2", 2, map[string]any{"col_1": "g", "col_2": "h", "col_3": "i", "row_number": 2}},
 		{"Invalid line negative", -1, map[string]any{}},
 		{"Invalid line too high", 3, map[string]any{}},
 	}

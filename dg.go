@@ -308,13 +308,13 @@ func generateTable(t model.Table, files map[string]model.CSVFile, tt ui.TimerFun
 				return fmt.Errorf("running case process for %s.%s: %w", t.Name, col.Name, err)
 			}
 
-		case "count_values":
-			var g generator.CountValuesGenerator
+		case "map":
+			var g generator.MapGenerator
 			if err := col.Generator.UnmarshalFunc(&g); err != nil {
-				return fmt.Errorf("parsing count_values process for %s: %w", col.Name, err)
+				return fmt.Errorf("parsing map process for %s: %w", col.Name, err)
 			}
 			if err := g.Generate(t, col, files); err != nil {
-				return fmt.Errorf("running count_values process for %s.%s: %w", t.Name, col.Name, err)
+				return fmt.Errorf("running map process for %s.%s: %w", t.Name, col.Name, err)
 			}
 
 		case "once":

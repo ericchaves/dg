@@ -7,14 +7,14 @@ import (
 	"github.com/samber/lo"
 )
 
-type CountValuesGenerator struct {
+type MapGenerator struct {
 	Table      string `yaml:"table"`
 	Column     string `yaml:"column"`
 	Expression string `yaml:"expression"`
 	Format     string `yaml:"format"`
 }
 
-func (g CountValuesGenerator) Generate(t model.Table, col model.Column, files map[string]model.CSVFile) error {
+func (g MapGenerator) Generate(t model.Table, col model.Column, files map[string]model.CSVFile) error {
 	if g.Table == "" {
 		g.Table = t.Name
 	}
@@ -30,9 +30,9 @@ func (g CountValuesGenerator) Generate(t model.Table, col model.Column, files ma
 	for value, count := range countValues {
 		for i := 1; i <= count; i++ {
 			env := ec.makeEnvFromLine(t.Name, j)
-			env["ITN"] = i
-			env["COUNT"] = count
-			env["VALUE"] = value
+			env["index"] = i
+			env["count"] = count
+			env["value"] = value
 			result, err := ec.evaluate(g.Expression, env)
 			if err != nil {
 				return fmt.Errorf("error evaluating expression for count %d of value %s", count, value)

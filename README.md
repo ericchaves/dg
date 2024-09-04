@@ -28,7 +28,7 @@ A fast data generator that produces CSV files from generated relational data.
      - [rel_date](#rel_date)
      - [case](#case)
      - [fk](#fk)
-     - [count_values](#count_values)
+     - [map](#map)
      - [once](#once)
 1. [Inputs](#inputs)
    - [csv](#csv)
@@ -667,7 +667,7 @@ Since column values are generated as strings, you must use expr's type functions
       type: int
       low: 2
       high: 12
-  - name: total
+  - name: due_amount
     type: rand
     processor:
       type: float64
@@ -677,7 +677,7 @@ Since column values are generated as strings, you must use expr's type functions
   - name: installment_value
     type: expr
     processor:
-      expression: 'int(total) / int(installments)'
+      expression: 'float(due_amount) / int(installments)'
       format: '%.4f'
 ```
 
@@ -824,15 +824,11 @@ All functionalities of the [expr generator](#expr) can be used in the `When` and
 
 #### FK
 
-Creates a number of rows for each value in another table, facilitating the creation of one scenario with different cardinalities for each value.
+The `fk` generator is usefull when we need to reference value from a parent `table` to build 1:1 or 1:N relations.
 
-The `repeat` parameter is an expr expression used to determine how many times each parent value should be used.
+The `repeat` parameter is an [expr](#expr) expression that need to evaluate to an int in order to determine how many times each parent value should be used. You can reference parent columns using the notation `parent.column_name`.
 
-Valid examples are `repeat: '3'`, `repeat: "3"` and `repeat: 'some_field * 3'` but `repeat: 3` is invalid.
-
-Parent columns can be referenced using the notation `parent.column_name`, and other column values of the same row can be referenced by their name.
-
-You can limit the total number of records in the child table by providing a `Count` value.
+The current table being generated has a `count` value it may limit the number of values created even if repeat x length(parent.column_name) is bigger than `count`.
 
 ```yaml
 tables:
@@ -871,30 +867,27 @@ tables:
           value: ${breakfast}
 ```
 
-#### count_values
+#### map
 
-The `count_values` generator counts the occurrences of each unique value in a specified column from a source table. It then generates a new column with each value repeated based on its count. This generator is useful for creating distributions or frequency-based data sets. The `expression` parameter is evaluated using the expr generator, allowing for flexible data generation.
+The `map` generator counts the occurrences of each unique value in a specified column from a source table. It then generates a new column with each value repeated based on its count. This generator is useful for creating distributions or frequency-based data sets. The `expression` parameter is evaluated using the [expr](#expr) allowing for flexible data generation.
 
 The following custom variables are available for use in expressions:
 
-* **LN**: Represents the generated line number, provided as an integer.
-* **VALUE**: Refers to the current value, formatted as a string.
-* **COUNT**: Indicates the number of occurrences of **VALUE**, expressed as an integer.
-* **ITN**: Denotes the current iterator number for **VALUE** (e.g., 1 of 3, 2 of 3, etc.).
+* **row_number**: Represents the generated line number, provided as an integer.
+* **value**: Refers to the current value, formatted as a string.
+* **count**: Indicates the number of occurrences of **value**, expressed as an integer.
+* **index**: Denotes the current iterator number for **value** (e.g., 1 of 3, 2 of 3, etc.).
 * **Example** YAML configuration:
 
 ```yaml
 - name: value_counts
-  type: count_values
+  type: map
   processor:
     table: source_table
     column: category
-    expression: "string(ITN) + ':' + string(VALUE) + ':' + string(COUNT)"
+    expression: "string(index) + ':' + string(value) + ':' + string(count)"
 ```
-
-In this example, for each unique value in the 'category' column of 'source_table', it generates a string combining the line number (ITN), the value itself (VALUE), and its count (COUNT).
-
-If you want to count values from another column of the current table you can ommit `table` parameter. 
+If you want to count values from another column of the current table you can ommit `table` parameter.
 
 #### once
 
@@ -923,9 +916,11 @@ In this example, the generator will:
 
 #### lookup
 
-The `Lookup` generator allows you to generate values for columns in a table based on search logic across multiple tables.
+The `lookup` generator allows you to generate values for columns in a table based on search logic across multiple tables.
 
 It behaves like a join, starting from the current table as base table. For each value in the `match_column`, it will look up the value on `source_table`.`source_colum` and once found, it will pick the value from `source_value` column. This process continues for the next item in the `tables` until it reaches the end, returning the last value of `source_value` to be used.
+
+The `lookup` generator does not produce cartesian products; when it finds a value in the searched table, it stops the search and moves to the next table.
 
 The `ignore_missing` attribute determines how the generator handles lookup failures. If `true`, the generator will ignore missing values and continue processing, using an empty value, similar to a left join. If `false`, it stops and returns an error when a value is not found. When omitted the default value `false` is assumed. 
 

@@ -23,7 +23,7 @@ type ExprContext struct {
 func (ec *ExprContext) makeEnvFromLine(filename string, line int) map[string]any {
 	refFile, ok := ec.Files[filename]
 	if !ok {
-		return ec.makeEnv(map[string]any{model.LN: strconv.Itoa(line)})
+		return ec.makeEnv(map[string]any{model.ROW_NUMBER: strconv.Itoa(line)})
 	}
 	record := refFile.GetRecord(line)
 	return ec.makeEnv(record)
@@ -165,10 +165,10 @@ func (ec *ExprContext) searchTable(sourceTable string, sourceColumn, sourceValue
 	if !exists {
 		return "", fmt.Errorf("table not found: %s", sourceTable)
 	}
-	return ec.searchFile(sourceFile, sourceColumn, sourceValue, matchColumn)
+	return ec.searchValue(sourceFile, sourceColumn, sourceValue, matchColumn)
 }
 
-func (ec *ExprContext) searchFile(sourceFile model.CSVFile, sourceColumn, sourceValue, matchColumn string) (string, error) {
+func (ec *ExprContext) searchValue(sourceFile model.CSVFile, sourceColumn, sourceValue, matchColumn string) (string, error) {
 	sourceColumnIndex := lo.IndexOf(sourceFile.Header, sourceColumn)
 	matchColumnIndex := lo.IndexOf(sourceFile.Header, matchColumn)
 	if sourceColumnIndex == -1 || matchColumnIndex == -1 {
@@ -182,6 +182,22 @@ func (ec *ExprContext) searchFile(sourceFile model.CSVFile, sourceColumn, source
 	}
 
 	return "", fmt.Errorf("value not found for %s in column %s", sourceValue, sourceColumn)
+}
+
+func (ec *ExprContext) searchRecord(sourceFile model.CSVFile, sourceColumn, sourceValue, matchColumn string) (map[string]any, error) {
+	sourceColumnIndex := lo.IndexOf(sourceFile.Header, sourceColumn)
+	matchColumnIndex := lo.IndexOf(sourceFile.Header, matchColumn)
+	if sourceColumnIndex == -1 || matchColumnIndex == -1 {
+		return map[string]any{}, fmt.Errorf("column not found: %s ou %s in %s", sourceColumn, matchColumn, sourceFile.Name)
+	}
+	_, index, found := lo.FindIndexOf(sourceFile.Lines[sourceColumnIndex], func(item string) bool {
+		return item == sourceValue
+	})
+	if found {
+		return sourceFile.GetRecord(index), nil
+	}
+
+	return map[string]any{}, fmt.Errorf("value not found for %s in column %s", sourceValue, sourceColumn)
 }
 
 func (ec *ExprContext) getType(value any) string {

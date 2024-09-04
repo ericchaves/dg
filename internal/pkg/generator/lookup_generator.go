@@ -18,6 +18,7 @@ type LookupGenerator struct {
 	MatchColumn   string        `yaml:"match_column"`
 	LookupTables  []LookupTable `yaml:"tables"`
 	IgnoreMissing bool          `yaml:"ignore_missing"`
+	Repeat        string        `yaml:"repeat"`
 }
 
 func (g LookupGenerator) Generate(t model.Table, c model.Column, files map[string]model.CSVFile) error {
@@ -41,35 +42,55 @@ func (g LookupGenerator) Generate(t model.Table, c model.Column, files map[strin
 	}
 	re := regexp.MustCompile(`value not found for \S+ in column \S+`)
 	var lines []string
-	for i := 0; i < t.Count; i++ {
-		matchValue := baseTable.Lines[baseColumnIndex][i]
-		value, err := g.generate(matchValue, g.LookupTables, files)
-		if err != nil {
-			if re.MatchString(err.Error()) && g.IgnoreMissing {
-				lines = append(lines, value)
-				continue
+	rows := 0
+	for rows < t.Count {
+		matchValue := baseTable.Lines[baseColumnIndex][rows]
+		values, err := g.generate(matchValue, g.LookupTables, files)
+		if err == nil || (re.MatchString(err.Error()) && g.IgnoreMissing) {
+			if len(values) == 0 {
+				values = []string{""}
 			}
+			lines = append(lines, values...)
+			rows += len(values)
+		} else {
 			return err
 		}
-		lines = append(lines, value)
 	}
 	AddTable(t, c.Name, lines, files)
 	return nil
 }
 
-func (g LookupGenerator) generate(matchValue string, lookupTables []LookupTable, files map[string]model.CSVFile) (string, error) {
+func (g LookupGenerator) generate(matchValue string, lookupTables []LookupTable, files map[string]model.CSVFile) ([]string, error) {
 	ec := &ExprContext{Files: files}
+	values := []string{}
 	value := matchValue
-	var err error
+	env := make(map[string]any)
+	repeat := 1
 	for _, lookup := range lookupTables {
 		sourceFile, ok := files[lookup.SourceTable]
 		if !ok {
-			return "", fmt.Errorf("lookup table %s not found", lookup.SourceTable)
+			return []string{}, fmt.Errorf("lookup table %s not found", lookup.SourceTable)
 		}
-		value, err = ec.searchFile(sourceFile, lookup.SourceColumn, value, lookup.SourceValue)
+		record, err := ec.searchRecord(sourceFile, lookup.SourceColumn, value, lookup.SourceValue)
 		if err != nil {
-			return "", err
+			return []string{}, err
+		}
+		env[lookup.SourceTable] = record
+		value = ec.AnyToString(record[lookup.SourceValue])
+	}
+	if g.Repeat != "" {
+		output, err := ec.evaluate(g.Repeat, env)
+		if err != nil {
+			return []string{}, err
+		}
+		var ok bool
+		repeat, ok = output.(int)
+		if !ok {
+			return []string{}, fmt.Errorf("cannot cast value to int: %s", output)
 		}
 	}
-	return value, nil
+	for j := 0; j < repeat; j++ {
+		values = append(values, value)
+	}
+	return values, nil
 }
