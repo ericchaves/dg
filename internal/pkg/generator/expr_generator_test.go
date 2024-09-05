@@ -1,6 +1,8 @@
 package generator
 
 import (
+	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/codingconcepts/dg/internal/pkg/model"
@@ -205,6 +207,83 @@ func TestGeneratorExprRandFunctions(t *testing.T) {
 			last_value, ok := lo.Last(last_line)
 			assert.True(t, ok)
 			assert.NotEmpty(t, last_value)
+		})
+	}
+}
+
+func TestGeneratorExprFakeitFunctions(t *testing.T) {
+	cases := []struct {
+		name       string
+		expression string
+		validator  func(string) bool
+	}{
+		{
+			name:       "fakeit name",
+			expression: "fakeit('name', {})",
+			validator: func(s string) bool {
+				return len(s) > 0 && !strings.ContainsAny(s, "0123456789")
+			},
+		},
+		{
+			name:       "fakeit email",
+			expression: "fakeit('email', {})",
+			validator: func(s string) bool {
+				return strings.Contains(s, "@") && strings.Contains(s, ".")
+			},
+		},
+		{
+			name:       "fakeit phone",
+			expression: "fakeit('phone', {})",
+			validator: func(s string) bool {
+				return len(s) >= 10 && strings.ContainsAny(s, "0123456789")
+			},
+		},
+		{
+			name:       "fakeit sentence",
+			expression: "fakeit('sentence', {'wordCount': 5})",
+			validator: func(s string) bool {
+				words := strings.Fields(s)
+				return len(words) == 5
+			},
+		},
+		{
+			name:       "fakeit number",
+			expression: "fakeit('number', {'min': 1, 'max': 100})",
+			validator: func(s string) bool {
+				num, err := strconv.Atoi(s)
+				return err == nil && num >= 1 && num <= 100
+			},
+		},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			table := model.Table{
+				Name:  "table",
+				Count: 1,
+			}
+
+			column := model.Column{
+				Name: "fake_data",
+			}
+
+			files := map[string]model.CSVFile{
+				"table": {
+					Name:   "table",
+					Header: []string{"id"},
+					Lines:  [][]string{{"1"}},
+				},
+			}
+
+			g := ExprGenerator{
+				Expression: c.expression,
+			}
+
+			err := g.Generate(table, column, files)
+			assert.Nil(t, err)
+
+			generatedValue := files["table"].Lines[1][0]
+			assert.True(t, c.validator(generatedValue), "Generated value '%s' does not meet the expected criteria", generatedValue)
 		})
 	}
 }

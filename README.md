@@ -13,6 +13,7 @@ A fast data generator that produces CSV files from generated relational data.
    - Import via [nodelocal](#import-via-nodelocal)
 1. [Tables](#tables)
    - [gen](#gen)
+   - [const](#const)
    - [set](#set)
    - [inc](#inc)
    - [ref](#ref)
@@ -740,7 +741,55 @@ tables:
           format: '%.2f'
 ```
 
-The list of custom functions (beyond expr-lang internal functions) available inside expressions are:
+The generator adds custom functions to extend those provided by expr-lang, including a wrapper for [gofakeit](https://pkg.go.dev/github.com/brianvoe/gofakeit/v) that allows calling any gofakeit function.
+
+```yaml
+tables:
+  - name: persons
+    count: 10
+    columns:
+      - name: person_id
+        type: range
+        processor:
+          type: int
+          from: 1
+          step: 1
+      - name: email
+        type: gen
+        processor:
+          template: '{{Email}}'
+      - name: salary
+        type: rand
+        processor:
+          type: float64
+          low: 2000.0
+          high: 5000.0
+          format: '%.2f'
+      - name: fake_name
+        type: expr
+        processor:
+          expression: fakeit('name', {})
+      - name: fake_email
+        type: expr
+        processor:
+          expression: fakeit('email', {})
+      - name: fake_phone
+        type: expr
+        processor:
+          expression: fakeit('phone', {})
+      - name: fake_sentence
+        type: expr
+        processor:
+          expression: > 
+            fakeit('sentence', {'wordCount': 5})
+      - name: fake_number
+        type: expr
+        processor:
+          expression: >
+            fakeit('number', {'min': 1, 'max': 100})
+```
+
+The list of custom functions available are:
 
 - match(sourceTable string, sourceColumn string, sourceValue string, matchColumn string) *returns the `matchColumn` from `sourceTable` where `sourceColumn` has `SourceValue`*
 - add_date(years int, months int, days int, date string) *Adds the specified numbers of `years`,`months` and `days` to the given `date`*
@@ -753,6 +802,7 @@ The list of custom functions (beyond expr-lang internal functions) available ins
 - get_column(table string, column string) *returns a [string]string with all column values of a in memory (processed) table*
 - fn_payments(total float64, installments int, percentage float64) *returns a []float64, calculates the down payment and equal installment amounts based on a specified down payment percentage and number of installments*
 - fn_pmt(rate float64, nper int, pv float64, fv float64, type int) *returns float64 fixed payment (principal + rate of interest) against a loan (fv=0) or future value given a initial deposit (pv). type indicates whether payment is made at the beginning (1) or end (0) of each period (nper)*
+- fakeit(name string, params map[string]any) *call a function from [gofakeit](https://pkg.go.dev/github.com/brianvoe/gofakeit/v7) by passing a map with the required arguments. the return value depends on the specific function called.*
 
 When expr detects collision between the name of a custom functions and column names, the custom function will be temporarily to renamed to `fn_<function_name>`. 
 

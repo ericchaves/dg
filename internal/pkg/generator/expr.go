@@ -10,8 +10,11 @@ import (
 	"time"
 
 	"github.com/alpeb/go-finance/fin"
+	"github.com/brianvoe/gofakeit/v7"
 	"github.com/codingconcepts/dg/internal/pkg/model"
 	"github.com/expr-lang/expr"
+	"github.com/martinusso/go-docs/cnpj"
+	"github.com/martinusso/go-docs/cpf"
 	"github.com/samber/lo"
 )
 
@@ -31,6 +34,7 @@ func (ec *ExprContext) makeEnvFromLine(filename string, line int) map[string]any
 
 func (ec *ExprContext) makeEnv(record map[string]any) map[string]any {
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+	faker := initGofakeit()
 	env := map[string]any{
 		"match": func(args ...any) (any, error) {
 			if len(args) != 4 {
@@ -225,7 +229,48 @@ func (ec *ExprContext) makeEnv(record map[string]any) map[string]any {
 			result, err := fin.Payment(rate, nper, pv, fv, typ)
 			return result, err
 		},
+		"fakeit": func(function string, params map[string]any) (any, error) {
+			info := gofakeit.GetFuncLookup(function)
+			if info == nil {
+				return nil, fmt.Errorf("function %s not found in gofakeit", function)
+			}
+
+			mapString := gofakeit.NewMapParams()
+			for key, value := range params {
+				v := reflect.ValueOf(value)
+				switch v.Kind() {
+				case reflect.Bool:
+					mapString.Add(key, fmt.Sprintf("%v", value))
+				case reflect.Int, reflect.Int8, reflect.Int32, reflect.Int64:
+					mapString.Add(key, fmt.Sprintf("%v", value))
+				case reflect.Uint, reflect.Uint8, reflect.Uint32, reflect.Uint64:
+					mapString.Add(key, fmt.Sprintf("%v", value))
+				case reflect.Float32, reflect.Float64:
+					mapString.Add(key, fmt.Sprintf("%v", value))
+				case reflect.String:
+					mapString.Add(key, fmt.Sprintf("%v", value))
+				case reflect.Map:
+					mapString.Add(key, fmt.Sprintf("%v", value))
+				case reflect.Slice:
+					var vals []string
+					for i := 0; i < v.Len(); i++ {
+						vals = append(vals, fmt.Sprintf("%v", v.Index(i).Interface()))
+					}
+
+					for _, val := range vals {
+						mapString.Add(key, val)
+					}
+				}
+			}
+
+			data, error := info.Generate(faker, mapString, info)
+			if error != nil {
+				return nil, error
+			}
+			return data, nil
+		},
 	}
+
 	for k, v := range record {
 		if _, has := env[k]; has {
 			env["fn_"+k] = env[k]
@@ -334,4 +379,29 @@ func (ec *ExprContext) AnyToBool(value any) bool {
 	default:
 		return true
 	}
+}
+
+func initGofakeit() *gofakeit.Faker {
+	cpfInfo := gofakeit.Info{
+		Display:     "cpf",
+		Category:    "cpf",
+		Description: "generate brazilian cpf",
+		Generate: func(f *gofakeit.Faker, m *gofakeit.MapParams, info *gofakeit.Info) (any, error) {
+			return cpf.Generate(), nil
+		},
+	}
+	gofakeit.AddFuncLookup("Cpf", cpfInfo)
+	gofakeit.AddFuncLookup("cpf", cpfInfo)
+	cpnjInfo := gofakeit.Info{
+		Display:     "cnpj",
+		Category:    "cnpj",
+		Description: "generate brazilian cnpj",
+		Generate: func(f *gofakeit.Faker, m *gofakeit.MapParams, info *gofakeit.Info) (any, error) {
+			return cnpj.Generate(), nil
+		},
+	}
+	gofakeit.AddFuncLookup("Cnpj", cpnjInfo)
+	gofakeit.AddFuncLookup("cnpj", cpnjInfo)
+	faker := gofakeit.New(0)
+	return faker
 }

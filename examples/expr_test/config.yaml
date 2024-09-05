@@ -19,6 +19,28 @@ tables:
           low: 2000.0
           high: 5000.0
           format: '%.2f'
+      - name: fake_name
+        type: expr
+        processor:
+          expression: fakeit('name', {})
+      - name: fake_email
+        type: expr
+        processor:
+          expression: fakeit('email', {})
+      - name: fake_phone
+        type: expr
+        processor:
+          expression: fakeit('phone', {})
+      - name: fake_sentence
+        type: expr
+        processor:
+          expression: > 
+            fakeit('sentence', {'wordCount': 5})
+      - name: fake_number
+        type: expr
+        processor:
+          expression: >
+            fakeit('number', {'min': 1, 'max': 100})
   - name: billing
     count: 10
     columns:
@@ -55,3 +77,43 @@ tables:
         type: expr
         processor:
           expression: 1..12 # will stop at 10 due to table count
+      - name: random_value
+        type: expr
+        processor:
+          expression: rand()
+      - name: random_range
+        type: expr
+        processor:
+          expression: rand_range(-10, int(installments))
+      - name: min_value
+        type: expr
+        processor:
+          expression: min(5,-3,0.3,7,-0.5, int(installments))
+      - name: max_value
+        type: expr
+        processor:
+          expression: max(5,-3,0.3,7,-0.5, int(installments))
+  - name: contracts
+    count: 3
+    columns:
+      - name: id
+        type: range
+        processor:
+          type: int
+          from: 1
+          step: 1
+      - name: name
+        type: expr
+        processor:
+          expression: fakeit('name', {})
+      - name: enroll
+        type: expr
+        processor:
+          expression: add_date(0, 0, row_number, '2023-08-14')
+          format: '2006-01-02'
+      - name: months
+        type: rand
+        processor:
+          type: int
+          low: 2
+          high: 5

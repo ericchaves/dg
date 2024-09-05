@@ -24,6 +24,7 @@ type GenGenerator struct {
 
 	patternGenerator *reggen.Generator
 	templateOptions  gofakeit.TemplateOptions
+	faker            *gofakeit.Faker
 }
 
 func (g GenGenerator) GetFormat() string {
@@ -49,8 +50,8 @@ func (g GenGenerator) Generate(t model.Table, c model.Column, files map[string]m
 		}
 	}
 
+	g.faker = initGofakeit()
 	if g.Template != "" {
-		var err error
 		g.templateOptions = gofakeit.TemplateOptions{
 			Funcs: template.FuncMap{
 				"cpf":  cpf.Generate,
@@ -61,7 +62,7 @@ func (g GenGenerator) Generate(t model.Table, c model.Column, files map[string]m
 				"CNPJ": cnpj.Generate,
 			},
 		}
-		if _, err = gofakeit.Template(g.Template, &g.templateOptions); err != nil {
+		if _, err := gofakeit.Template(g.Template, &g.templateOptions); err != nil {
 			return fmt.Errorf("parsing template: %w", err)
 		}
 	}
@@ -87,7 +88,7 @@ func (pg GenGenerator) generate() string {
 	}
 
 	if pg.Template != "" {
-		value, err := gofakeit.Template(pg.Template, &pg.templateOptions)
+		value, err := pg.faker.Template(pg.Template, &pg.templateOptions)
 		if err != nil {
 			return fmt.Errorf("generating template: %w", err).Error()
 		}
