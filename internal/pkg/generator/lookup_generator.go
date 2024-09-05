@@ -14,6 +14,7 @@ type LookupTable struct {
 	SourceValue  string `yaml:"source_value"`
 	Format       string `yaml:"format"`
 	Expression   string `yaml:"expression"`
+	Predicate    string `yaml:"predicate"`
 }
 
 type LookupGenerator struct {
@@ -74,7 +75,7 @@ func (g LookupGenerator) generate(matchValue string, lookupTables []LookupTable,
 		if !ok {
 			return []string{}, fmt.Errorf("lookup table %s not found", lookup.SourceTable)
 		}
-		record, err := ec.searchRecord(sourceFile, lookup.SourceColumn, value, lookup.SourceValue)
+		record, err := ec.searchRecord(sourceFile, lookup.SourceColumn, value, lookup.SourceValue, lookup.Predicate)
 		env = ec.makeEnv(record)
 		if err != nil {
 			return []string{}, err

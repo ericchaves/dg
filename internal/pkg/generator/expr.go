@@ -1,6 +1,7 @@
 package generator
 
 import (
+	"crypto/sha256"
 	"fmt"
 	"math"
 	"math/rand"
@@ -269,6 +270,10 @@ func (ec *ExprContext) makeEnv(record map[string]any) map[string]any {
 			}
 			return data, nil
 		},
+		"sha256": func(data string) (string, error) {
+			sum := sha256.Sum256([]byte(data))
+			return fmt.Sprintf("%x", sum), nil
+		},
 	}
 
 	for k, v := range record {
@@ -312,17 +317,28 @@ func (ec *ExprContext) searchValue(sourceFile model.CSVFile, sourceColumn, sourc
 	return "", fmt.Errorf("value not found for %s in column %s", sourceValue, sourceColumn)
 }
 
-func (ec *ExprContext) searchRecord(sourceFile model.CSVFile, sourceColumn, sourceValue, matchColumn string) (map[string]any, error) {
+func (ec *ExprContext) searchRecord(sourceFile model.CSVFile, sourceColumn, sourceValue, matchColumn string, predicate string) (map[string]any, error) {
 	sourceColumnIndex := lo.IndexOf(sourceFile.Header, sourceColumn)
 	matchColumnIndex := lo.IndexOf(sourceFile.Header, matchColumn)
 	if sourceColumnIndex == -1 || matchColumnIndex == -1 {
 		return map[string]any{}, fmt.Errorf("column not found: %s ou %s in %s", sourceColumn, matchColumn, sourceFile.Name)
 	}
-	_, index, found := lo.FindIndexOf(sourceFile.Lines[sourceColumnIndex], func(item string) bool {
-		return item == sourceValue
-	})
-	if found {
-		return sourceFile.GetRecord(index), nil
+	columnValues := sourceFile.Lines[sourceColumnIndex]
+	for i, item := range columnValues {
+		if item == sourceValue {
+			record := sourceFile.GetRecord(i)
+			if predicate != "" {
+				env := ec.makeEnv(record)
+				match, err := ec.evaluate(predicate, env)
+				if err != nil {
+					return map[string]any{}, err
+				}
+				if !ec.AnyToBool(match) {
+					continue
+				}
+			}
+			return record, nil
+		}
 	}
 
 	return map[string]any{}, fmt.Errorf("value not found for %s in column %s", sourceValue, sourceColumn)
@@ -383,25 +399,29 @@ func (ec *ExprContext) AnyToBool(value any) bool {
 
 func initGofakeit() *gofakeit.Faker {
 	cpfInfo := gofakeit.Info{
-		Display:     "cpf",
-		Category:    "cpf",
-		Description: "generate brazilian cpf",
 		Generate: func(f *gofakeit.Faker, m *gofakeit.MapParams, info *gofakeit.Info) (any, error) {
 			return cpf.Generate(), nil
 		},
 	}
 	gofakeit.AddFuncLookup("Cpf", cpfInfo)
 	gofakeit.AddFuncLookup("cpf", cpfInfo)
+
 	cpnjInfo := gofakeit.Info{
-		Display:     "cnpj",
-		Category:    "cnpj",
-		Description: "generate brazilian cnpj",
 		Generate: func(f *gofakeit.Faker, m *gofakeit.MapParams, info *gofakeit.Info) (any, error) {
 			return cnpj.Generate(), nil
 		},
 	}
 	gofakeit.AddFuncLookup("Cnpj", cpnjInfo)
 	gofakeit.AddFuncLookup("cnpj", cpnjInfo)
+
+	regexInfo := gofakeit.Info{
+		Generate: func(f *gofakeit.Faker, m *gofakeit.MapParams, info *gofakeit.Info) (any, error) {
+			pattern := m.Get("")
+			return gofakeit.Regex(pattern[0]), nil
+		},
+	}
+	gofakeit.AddFuncLookup("regex", regexInfo)
+
 	faker := gofakeit.New(0)
 	return faker
 }
