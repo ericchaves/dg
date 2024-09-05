@@ -1,6 +1,7 @@
 package generator
 
 import (
+	"crypto/sha256"
 	"fmt"
 	"math"
 	"math/rand"
@@ -269,6 +270,10 @@ func (ec *ExprContext) makeEnv(record map[string]any) map[string]any {
 			}
 			return data, nil
 		},
+		"sha256": func(data string) (string, error) {
+			sum := sha256.Sum256([]byte(data))
+			return fmt.Sprintf("%x", sum), nil
+		},
 	}
 
 	for k, v := range record {
@@ -383,25 +388,29 @@ func (ec *ExprContext) AnyToBool(value any) bool {
 
 func initGofakeit() *gofakeit.Faker {
 	cpfInfo := gofakeit.Info{
-		Display:     "cpf",
-		Category:    "cpf",
-		Description: "generate brazilian cpf",
 		Generate: func(f *gofakeit.Faker, m *gofakeit.MapParams, info *gofakeit.Info) (any, error) {
 			return cpf.Generate(), nil
 		},
 	}
 	gofakeit.AddFuncLookup("Cpf", cpfInfo)
 	gofakeit.AddFuncLookup("cpf", cpfInfo)
+
 	cpnjInfo := gofakeit.Info{
-		Display:     "cnpj",
-		Category:    "cnpj",
-		Description: "generate brazilian cnpj",
 		Generate: func(f *gofakeit.Faker, m *gofakeit.MapParams, info *gofakeit.Info) (any, error) {
 			return cnpj.Generate(), nil
 		},
 	}
 	gofakeit.AddFuncLookup("Cnpj", cpnjInfo)
 	gofakeit.AddFuncLookup("cnpj", cpnjInfo)
+
+	regexInfo := gofakeit.Info{
+		Generate: func(f *gofakeit.Faker, m *gofakeit.MapParams, info *gofakeit.Info) (any, error) {
+			pattern := m.Get("")
+			return gofakeit.Regex(pattern[0]), nil
+		},
+	}
+	gofakeit.AddFuncLookup("regex", regexInfo)
+
 	faker := gofakeit.New(0)
 	return faker
 }

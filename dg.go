@@ -334,6 +334,15 @@ func generateTable(t model.Table, files map[string]model.CSVFile, tt ui.TimerFun
 			if err := g.Generate(t, col, files); err != nil {
 				return fmt.Errorf("running lookup process for %s.%s: %w", t.Name, col.Name, err)
 			}
+
+		case "dist":
+			var g generator.DistGenerator
+			if err := col.Generator.UnmarshalFunc(&g); err != nil {
+				return fmt.Errorf("parsing dist process for %s: %w", col.Name, err)
+			}
+			if err := g.Generate(t, col, files); err != nil {
+				return fmt.Errorf("running dist process for %s.%s: %w", t.Name, col.Name, err)
+			}
 		}
 	}
 
