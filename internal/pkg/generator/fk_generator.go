@@ -10,6 +10,7 @@ import (
 type ForeignKeyGenerator struct {
 	Table       string `yaml:"table"`
 	ReferenceAs string `yaml:"reference_as"`
+	SkippedAs   string `yaml:"skipped_as"`
 	Column      string `yaml:"column"`
 	Repeat      string `yaml:"repeat"`
 	Filter      string `yaml:"filter"`
@@ -33,13 +34,22 @@ func (g ForeignKeyGenerator) Generate(t model.Table, files map[string]model.CSVF
 }
 
 func (g ForeignKeyGenerator) generate(t model.Table, col model.Column, files map[string]model.CSVFile) error {
-	refAs, refTable, refColumn := g.ReferenceAs, g.Table, g.Column
+	skipAs, refAs, refTable, refColumn := g.SkippedAs, g.ReferenceAs, g.Table, g.Column
 	if refAs == "" {
 		refAs = "parent"
+	}
+	if skipAs == "" {
+		skipAs = "skipped"
 	}
 	refFile, ok := files[refTable]
 	if !ok {
 		return fmt.Errorf("referenced table %s not found", refTable)
+	}
+	if lo.Contains(refFile.Header, refAs) {
+		return fmt.Errorf("current table has a column named %s. use reference_as to set another variable name for the referenced table", refAs)
+	}
+	if lo.Contains(refFile.Header, skipAs) {
+		return fmt.Errorf("current table has a column named %s. use skipped_as to set another variable name for the skipped count", skipAs)
 	}
 
 	refValues := refFile.GetColumnValues(refColumn)
@@ -49,22 +59,31 @@ func (g ForeignKeyGenerator) generate(t model.Table, col model.Column, files map
 
 	var lines []string
 	rows := 0
+	skipped := 0
 	for i, val := range refValues {
 		repeat := 1
 		ec := &ExprContext{Files: files}
-		env := ec.makeEnvFromLine(t.Name, i)
+		record := model.GetRecord(t.Name, i, files)
+		env := ec.makeEnv()
+		if err := ec.mergeEnv(env, record); err != nil {
+			return err
+		}
 		parent := refFile.GetRecord(i)
 		env[refAs] = parent
+
 		if g.Filter != "" {
+			env[skipAs] = skipped
 			output, err := ec.evaluate(g.Filter, env)
 			if err != nil {
 				return err
 			}
-			skip := ec.AnyToBool(output)
+			skip := !ec.AnyToBool(output)
 			if skip {
+				skipped++
 				continue
 			}
 		}
+
 		if g.Repeat != "" {
 			output, err := ec.evaluate(g.Repeat, env)
 			if err != nil {

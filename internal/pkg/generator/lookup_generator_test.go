@@ -186,7 +186,7 @@ func TestExprContext_SearchRecord(t *testing.T) {
 	t.Run("Valid search", func(t *testing.T) {
 		record, err := ec.searchRecord(files["test"], "name", "Bob", "age", "")
 		assert.NoError(t, err)
-		assert.Equal(t, map[string]any{"id": "2", "name": "Bob", "age": "30"}, record)
+		assert.Equal(t, map[string]any{"id": "2", "name": "Bob", "age": "30", "row_number": 1}, record)
 	})
 
 	t.Run("Invalid source column", func(t *testing.T) {
@@ -207,13 +207,13 @@ func TestExprContext_SearchRecord(t *testing.T) {
 		assert.Contains(t, err.Error(), "value not found")
 	})
 
-	t.Run("With predicate", func(t *testing.T) {
+	t.Run("With Filter", func(t *testing.T) {
 		record, err := ec.searchRecord(files["test"], "name", "Bob", "age", "int(age) > 25")
 		assert.NoError(t, err)
-		assert.Equal(t, map[string]any{"id": "2", "name": "Bob", "age": "30"}, record)
+		assert.Equal(t, map[string]any{"id": "2", "name": "Bob", "age": "30", "row_number": 1}, record)
 	})
 
-	t.Run("Predicate not satisfied", func(t *testing.T) {
+	t.Run("Filter not satisfied", func(t *testing.T) {
 		_, err := ec.searchRecord(files["test"], "name", "Bob", "age", "int(age) > 35")
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "value not found")
@@ -255,21 +255,25 @@ func TestExprContext_AnyToString(t *testing.T) {
 	ec := &ExprContext{}
 
 	t.Run("Integer", func(t *testing.T) {
+		ec.Format = ""
 		result := ec.AnyToString(42)
 		assert.Equal(t, "42", result)
 	})
 
 	t.Run("Float", func(t *testing.T) {
+		ec.Format = ""
 		result := ec.AnyToString(3.14)
 		assert.Equal(t, "3.14", result)
 	})
 
 	t.Run("String", func(t *testing.T) {
+		ec.Format = ""
 		result := ec.AnyToString("hello")
 		assert.Equal(t, "hello", result)
 	})
 
 	t.Run("Boolean", func(t *testing.T) {
+		ec.Format = ""
 		result := ec.AnyToString(true)
 		assert.Equal(t, "true", result)
 	})

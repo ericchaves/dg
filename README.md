@@ -794,20 +794,19 @@ tables:
 The list of custom functions available are:
 
 - match(sourceTable string, sourceColumn string, sourceValue string, matchColumn string) *returns the `matchColumn` from `sourceTable` where `sourceColumn` has `SourceValue`*
-- add_date(years int, months int, days int, date string) *Adds the specified numbers of `years`,`months` and `days` to the given `date`*
-- rand() *returns a pseudo-random non-negative integer*
-- rand(n int) *returns a pseudo-random integer between 0 and `n`. `n` must be positive*
-- rand_range(min int, max int) *returns a pseudo-random integer between `min` and `max`, inclusive. Accepts both positive and negative values*
-- rand_float64() *returns a pseudo-random positive float64, as in the [math/rand package](https://pkg.go.dev/math/rand)*
-- rand_perm(n int) *returns a pseudo-random permutation of the numbers [0, `n`), as in the [math/rand package](https://pkg.go.dev/math/rand)*
+- add_date(years int, months int, days int, date any) *Adds the specified numbers of `years`,`months` and `days` to the given `date`*
+- rand(n int) *returns a pseudo-random between 0 and `n` when n is positive and between -n and o when n is negative*.
+- rand(min int, max int) *returns a pseudo-random integer between `min` and `max`, inclusive. Accepts both positive and negative values*
+- randf64() *returns a pseudo-random positive float64, as in the [math/rand package](https://pkg.go.dev/math/rand)*
+- randp(n int) *returns a pseudo-random permutation of the numbers [0, `n`), as in the [math/rand package](https://pkg.go.dev/math/rand)*
 - sha256(data strig) *returns the SHA256 checksum of the data.*
 - get_record(table string, line int) *returns a map[string]any with the row value for a given line of a in memory (processed) table*
 - get_column(table string, column string) *returns a [string]string with all column values of a in memory (processed) table*
-- fn_payments(total float64, installments int, percentage float64) *returns a []float64, calculates the down payment and equal installment amounts based on a specified down payment percentage and number of installments*
-- fn_pmt(rate float64, nper int, pv float64, fv float64, type int) *returns float64 fixed payment (principal + rate of interest) against a loan (fv=0) or future value given a initial deposit (pv). type indicates whether payment is made at the beginning (1) or end (0) of each period (nper)*
+- payments(total float64, installments int, percentage float64) *returns a []float64, calculates the down payment and equal installment amounts based on a specified down payment percentage and number of installments*
+- pmt(rate float64, nper int, pv float64, fv float64, type int) *returns float64 fixed payment (principal + rate of interest) against a loan (fv=0) or future value given a initial deposit (pv). type indicates whether payment is made at the beginning (1) or end (0) of each period (nper)*
 - fakeit(name string, params map[string]any) *call a function from [gofakeit](https://pkg.go.dev/github.com/brianvoe/gofakeit/v7) by passing a map with the required arguments. the return value depends on the specific function called.*
-
-When expr detects collision between the name of a custom functions and column names, the custom function will be temporarily to renamed to `fn_<function_name>`. 
+- sha256(data s): *returns the SHA256 checksum of the data.*
+- pad(s string, char string, length int, left bool): *returns the string padded with char to the left or right.*
 
 #### rand
 
@@ -934,11 +933,12 @@ Each condition can define it's own `format` attribute to control the formatted o
 
 The `fk` generator is usefull when we need to reference value from a parent `table` to build 1:1 or 1:N relations.
 
-The `repeat` parameter is an [expr](#expr) expression that need to evaluate to an int in order to determine how many times each parent value should be used. You can reference parent columns using the notation `parent.column_name`.
+The `repeat` parameter is an [expr](#expr) expression that must evaluate to an integer, which will determine how many times each parent value should be used. 
+You can reference parent columns in the `repeat` expression using the notation `parent.column_name`.
 
-You can apply a `filter` [expr](#expr) expression that evaluates to bool to skip some rows.
+You can apply a `filter` [expr](#expr) expression that evaluates to a boolean, allowing you to skip certain rows. When a filter is applied, the number of `skipped` rows is stored in a custom integer variable, which can be used in both `repeat` and `filter` expressions. 
 
-The current table being generated has a `count` value it may limit the number of values created even if repeat x length(parent.column_name) is bigger than `count`.
+When the table being generated includes a `count` value, it will restrict the number of values created to match the `count`, even if the `repeat` value is larger than the `count`.
 
 ```yaml
 tables:
@@ -979,7 +979,7 @@ tables:
 
 #### map
 
-The `map` generator counts the occurrences of each unique value in a specified column from a source table. It then generates a new column with each value repeated based on its count. This generator is useful for creating distributions or frequency-based data sets. The `expression` parameter is evaluated using the [expr](#expr) allowing for flexible data generation.
+The `map` generator maps each value in a specified column from a source table and generates a new column using the `expression`. This generator is useful for creating distributions or frequency-based data sets.
 
 The following custom variables are available for use in expressions:
 
@@ -1031,9 +1031,13 @@ The `lookup` generator allows you to generate values for columns in a table base
 
 It behaves like a join, starting from the current table as base table. For each value in the `match_column`, it will look up the value on `source_table`.`source_colum` and once found, it will pick the value from `source_value` column. This process continues for the next item in the `tables` until it reaches the end, returning the last value of `source_value` to be used.
 
-The `lookup` generator does not produce cartesian products; when it finds a value in the searched table, it stops the search and moves to the next table.
+The `lookup` generator does not produce cartesian products; when it finds a value in the searched table, it stops the search and moves to the next table
 
 The `ignore_missing` attribute determines how the generator handles lookup failures. If `true`, the generator will ignore missing values and continue processing, using an empty value, similar to a left join. If `false`, it stops and returns an error when a value is not found. When omitted the default value `false` is assumed. 
+
+The following custom variables are available for use in expressions:
+
+* **row_number**: Represents the generated line number, provided as an integer. Start with 0.
 
 ```yaml
 - name: last_purchase
@@ -1057,6 +1061,9 @@ In this example, the generator will:
 1. If a match is found, it retrieves the value from the `order_date` column.
 1. The retrieved `order_date` value is used to generate new data for the target column in the base table.
 
+Each lookup in table can declare an [expr](#expr) `expression` to return a calculated value when the match is found.
+Additionally, a companion `predicate` expression may be declared which will be evaluated when a match is found. If the predicate evaluates to `false`, the value is skipped, and the search continues, looking for another match, allowing different results to be returned using the `expression`.
+
 You can set `format` for each table to control the formatted output value.
 
 ```yaml
@@ -1072,6 +1079,7 @@ You can set `format` for each table to control the formatted output value.
     - source_table: "orders"
       source_column: "customer_id"
       source_value: "order_date"
+      predicate: int(order_items) > 5
       format: '02-01-2006'
 ```
 

@@ -14,7 +14,7 @@ type LookupTable struct {
 	SourceValue  string `yaml:"source_value"`
 	Format       string `yaml:"format"`
 	Expression   string `yaml:"expression"`
-	Predicate    string `yaml:"predicate"`
+	Filter       string `yaml:"filter"`
 }
 
 type LookupGenerator struct {
@@ -64,6 +64,9 @@ func (g LookupGenerator) Generate(t model.Table, c model.Column, files map[strin
 }
 
 func (g LookupGenerator) generate(matchValue string, lookupTables []LookupTable, files map[string]model.CSVFile) ([]string, error) {
+	if matchValue == "" {
+		return []string{}, fmt.Errorf("match_column is required")
+	}
 	ec := &ExprContext{Files: files}
 	values := []string{}
 	value := matchValue
@@ -75,9 +78,18 @@ func (g LookupGenerator) generate(matchValue string, lookupTables []LookupTable,
 		if !ok {
 			return []string{}, fmt.Errorf("lookup table %s not found", lookup.SourceTable)
 		}
-		record, err := ec.searchRecord(sourceFile, lookup.SourceColumn, value, lookup.SourceValue, lookup.Predicate)
-		env = ec.makeEnv(record)
+		if lookup.SourceColumn == "" {
+			return []string{}, fmt.Errorf("source_column is required")
+		}
+		if lookup.SourceValue == "" {
+			return []string{}, fmt.Errorf("source_value is required")
+		}
+		record, err := ec.searchRecord(sourceFile, lookup.SourceColumn, value, lookup.SourceValue, lookup.Filter)
 		if err != nil {
+			return []string{}, err
+		}
+		env = ec.makeEnv()
+		if err := ec.mergeEnv(env, record); err != nil {
 			return []string{}, err
 		}
 		if lookup.Expression != "" {

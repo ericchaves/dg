@@ -30,8 +30,11 @@ func (g CaseGenerator) Generate(t model.Table, c model.Column, files map[string]
 	for i := 0; i < t.Count; i++ {
 		for _, cond := range g {
 			ec := &ExprContext{Files: files, Format: cond.Format}
-			rec := model.GetRecord(t.Name, i, files)
-			env := ec.makeEnv(rec)
+			record := model.GetRecord(t.Name, i, files)
+			env := ec.makeEnv()
+			if err := ec.mergeEnv(env, record); err != nil {
+				return err
+			}
 			result, err := ec.evaluate(cond.When, env)
 			if err != nil {
 				return fmt.Errorf("error parsing When: %s (%w)", cond.When, err)

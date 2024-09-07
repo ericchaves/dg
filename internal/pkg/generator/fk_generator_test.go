@@ -135,6 +135,47 @@ func TestFKGenerator_Generate(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "FK generation with repeat expression using parent column",
+			fkGenerator: ForeignKeyGenerator{
+				Table:  "products",
+				Column: "product_id",
+				Repeat: "int(parent.quantity)",
+			},
+			table: model.Table{
+				Name: "order_details",
+			},
+			column: model.Column{
+				Name: "product_id",
+			},
+			files: map[string]model.CSVFile{
+				"products": {
+					Header: []string{"product_id", "quantity"},
+					Lines: [][]string{
+						{"P1", "P2", "P3"},
+						{"2", "1", "3"},
+					},
+				},
+			},
+			expectedError: "",
+			expectedResult: map[string]model.CSVFile{
+				"products": {
+					Header: []string{"product_id", "quantity"},
+					Lines: [][]string{
+						{"P1", "P2", "P3"},
+						{"2", "1", "3"},
+					},
+				},
+				"order_details": {
+					Name:   "order_details",
+					Header: []string{"product_id"},
+					Lines: [][]string{
+						{"P1", "P1", "P2", "P3", "P3", "P3"},
+					},
+					Output: true,
+				},
+			},
+		},
 	}
 
 	for _, tt := range tests {

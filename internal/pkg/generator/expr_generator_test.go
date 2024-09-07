@@ -145,36 +145,32 @@ func TestGeneratorExprRandFunctions(t *testing.T) {
 		expression string
 	}{
 		{
-			name:       "rand",
-			expression: "rand()",
-		},
-		{
 			name:       "rand with max value",
 			expression: "rand(10)",
 		},
 		{
 			name:       "rand with negative number",
-			expression: "randn(-10)",
+			expression: "rand(-10)",
 		},
 		{
-			name:       "rand_range",
-			expression: "rand_range(-10, int(parameter))",
+			name:       "rand between ranges",
+			expression: "randr(-10, int(parameter))",
 		},
 		{
-			name:       "rand_range with all negatives",
-			expression: "rand_range(-30, int(parameter) * -1)",
+			name:       "rand between ranges with all negatives",
+			expression: "randr(-30, int(parameter) * -1)",
 		},
 		{
 			name:       "rand with value from other cell",
 			expression: "rand(int(parameter))",
 		},
 		{
-			name:       "rand_float64",
-			expression: "rand_float64()",
+			name:       "rand float 64",
+			expression: "randf64()",
 		},
 		{
-			name:       "rand_perm",
-			expression: "rand_perm(int(parameter))",
+			name:       "rand permutation",
+			expression: "randp(int(parameter))",
 		},
 	}
 	for _, c := range cases {
@@ -419,18 +415,18 @@ func TestGeneratorExprMatchFunction(t *testing.T) {
 		},
 		{
 			name:       "match integer field using row_number cursor",
-			expression: "match('contracts','id', row_number + 1, 'months')",
+			expression: "match('contracts','id', string(row_number + 1), 'months')",
 			expected:   []string{"2", "3", "5"},
 		},
 		{
 			name:       "match with format float64 using row_number cursor",
-			expression: "int(match('contracts','id', row_number + 1, 'months')) + 0.000001",
+			expression: "int(match('contracts','id', string(row_number + 1), 'months')) + 0.000001",
 			format:     "%.2f",
 			expected:   []string{"2.00", "3.00", "5.00"},
 		},
 		{
 			name:       "match with date column",
-			expression: "date(match('contracts','id', row_number + 1, 'enroll'), '2006-01-02')",
+			expression: "date(match('contracts','id', string(row_number + 1), 'enroll'), '2006-01-02')",
 			format:     "02/01/2006",
 			expected:   []string{"14/08/2023", "15/08/2023", "16/08/2023"},
 		},

@@ -31,7 +31,11 @@ func (g MapGenerator) Generate(t model.Table, col model.Column, files map[string
 		if _, ok := indexValues[value]; !ok {
 			indexValues[value] = 1
 		}
-		env := ec.makeEnvFromLine(t.Name, row)
+		record := model.GetRecord(t.Name, row, files)
+		env := ec.makeEnv()
+		if err := ec.mergeEnv(env, record); err != nil {
+			return err
+		}
 		env["index"] = indexValues[value]
 		env["count"] = countValues[value]
 		env["value"] = value

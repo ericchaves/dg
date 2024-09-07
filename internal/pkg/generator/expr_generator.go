@@ -29,7 +29,11 @@ func (g ExprGenerator) Generate(t model.Table, c model.Column, files map[string]
 		if len(lines) == t.Count {
 			break
 		}
-		env := ec.makeEnvFromLine(t.Name, i)
+		record := model.GetRecord(t.Name, i, files)
+		env := ec.makeEnv()
+		if err := ec.mergeEnv(env, record); err != nil {
+			return err
+		}
 		result, err := ec.evaluate(g.Expression, env)
 		if err != nil {
 			return fmt.Errorf("error evaluating expression %w", err)

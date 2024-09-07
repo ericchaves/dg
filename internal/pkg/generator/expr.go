@@ -6,8 +6,7 @@ import (
 	"math"
 	"math/rand"
 	"reflect"
-	"regexp"
-	"strconv"
+	"strings"
 	"time"
 
 	"github.com/alpeb/go-finance/fin"
@@ -24,167 +23,82 @@ type ExprContext struct {
 	Format string
 }
 
-func (ec *ExprContext) makeEnvFromLine(filename string, line int) map[string]any {
-	refFile, ok := ec.Files[filename]
-	if !ok {
-		return ec.makeEnv(map[string]any{model.ROW_NUMBER: strconv.Itoa(line)})
+func (ec *ExprContext) mergeEnv(env map[string]any, record map[string]any) error {
+	for k, v := range record {
+		if env[k] != nil {
+			return fmt.Errorf("cannot merge field %s into env", k)
+		}
+		env[k] = v
 	}
-	record := refFile.GetRecord(line)
-	return ec.makeEnv(record)
+	return nil
 }
 
-func (ec *ExprContext) makeEnv(record map[string]any) map[string]any {
+func (ec *ExprContext) makeEnv() map[string]any {
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	faker := initGofakeit()
 	env := map[string]any{
-		"match": func(args ...any) (any, error) {
-			if len(args) != 4 {
-				return "", fmt.Errorf("match function expects 4 arguments: match(sourceTable string, sourceColumn string, sourceValue string, matchColumn string)")
-			}
-			sourceTable, sourceColumn, matchColumn := args[0].(string), args[1].(string), args[3].(string)
-			sourceValue := fmt.Sprintf("%v", args[2])
+		"match": func(sourceTable string, sourceColumn string, sourceValue string, matchColumn string) (any, error) {
 			value, err := ec.searchTable(sourceTable, sourceColumn, sourceValue, matchColumn)
 			if err != nil {
 				return nil, err
 			}
 			return value, nil
 		},
-		"add_date": func(args ...any) (any, error) {
-			if len(args) != 4 {
-				return "", fmt.Errorf("add_date function expects 5 arguments: add_date(years int, months int, days int, data date)")
-			}
-			years, err := strconv.Atoi(fmt.Sprintf("%v", args[0]))
-			if err != nil {
-				return "", fmt.Errorf("error parsing years: %w", err)
-			}
-			months, err := strconv.Atoi(fmt.Sprintf("%v", args[1]))
-			if err != nil {
-				return "", fmt.Errorf("error parsing months: %w", err)
-			}
-			days, err := strconv.Atoi(fmt.Sprintf("%v", args[2]))
-			if err != nil {
-				return "", fmt.Errorf("error parsing days: %w", err)
-			}
-			var data time.Time
-			switch args[3].(type) {
+		"add_date": func(years int, months int, days int, data any) (any, error) {
+			switch value := data.(type) {
 			case time.Time:
-				data = args[3].(time.Time)
-				return data.AddDate(years, months, days), nil
+				return value.AddDate(years, months, days), nil
 			case float64:
-				float, _ := args[3].(float64)
-				sec := int64(float)
-				nano := int64((float - float64(sec)) * 1e9)
-				data = time.Unix(sec, nano)
-				return data.AddDate(years, months, days), nil
+				sec := int64(value)
+				nano := int64((value - float64(sec)) * 1e9)
+				output := time.Unix(sec, nano)
+				return output.AddDate(years, months, days), nil
 			case int:
-				sec := int64(args[3].(int))
-				data = time.Unix(sec, 0)
-				return data.AddDate(years, months, days), nil
+				sec := int64(value)
+				output := time.Unix(sec, 0)
+				return output.AddDate(years, months, days), nil
 			case string:
-				digits := regexp.MustCompile(`(\d)+`)
-				match := digits.FindAllString(ec.Format, -1)
-				if len(match) >= 3 {
-					data, err = time.Parse(ec.Format, args[3].(string))
-				} else {
-					data, err = time.Parse("2006-01-02", args[3].(string))
+				if ec.Format == "" {
+					ec.Format = "2006-01-02"
 				}
+				output, err := time.Parse(ec.Format, value)
 				if err != nil {
-					return "", fmt.Errorf("error parsing date: %w", err)
+					return "", fmt.Errorf("error formating date: %w", err)
 				}
-				return data.AddDate(years, months, days), nil
+				return output.AddDate(years, months, days), nil
 			}
-			return "", fmt.Errorf("error parsing date")
+			return "", fmt.Errorf("error parsing date: %q", data)
 		},
-		"rand": func(args ...any) (any, error) {
-			if len(args) == 0 {
-				return rand.Int(), nil
+		"rand": func(n int) int {
+			if n < 0 {
+				return r.Intn(n*-1) * -1
 			}
-			n, ok := args[0].(int)
-			if !ok {
-				return nil, fmt.Errorf("value %s cannot be convrted to int", args[0])
-			}
-			if n <= 0 {
-				return nil, fmt.Errorf("value %s must be a positive integer", args[0])
-			}
-			return r.Intn(n), nil
+			return r.Intn(n)
 		},
-		"rand_float64": func(args ...any) (any, error) {
-			return r.Float64(), nil
+		"randf64": func() float64 {
+			return r.Float64()
 		},
-		"randn": func(args ...any) (any, error) {
-			if len(args) < 1 {
-				return "", fmt.Errorf("rand function expects 1 argument: randn(n int)")
-			}
-			n, ok := args[0].(int)
-			if !ok {
-				return "", fmt.Errorf("argument %v cannot be converted to int", args[0])
-			}
-			a := int(math.Abs(float64(n)))
-			return rand.Intn(a+1) + n, nil
-		},
-		"rand_range": func(args ...any) (any, error) {
-			if len(args) < 2 {
-				return "", fmt.Errorf("rand_range function expects 2 argument: rand_range(min int, max int)")
-			}
-			min, ok := args[0].(int)
-			if !ok {
-				return "", fmt.Errorf("argument %v cannot be converted to int", args[0])
-			}
-			max, ok := args[1].(int)
-			if !ok {
-				return "", fmt.Errorf("argument %v cannot be converted to int", args[1])
-			}
+		"randr": func(min int, max int) int {
 			if min > max {
 				min, max = max, min
 			}
-			return rand.Intn(max-min+1) + min, nil
+			return r.Intn(max-min+1) + min
 		},
-		"rand_perm": func(args ...any) (any, error) {
-			if len(args) != 1 {
-				return "", fmt.Errorf("rand_perm function expects 1 argument: rand_perm(n int)")
-			}
-			n, ok := args[0].(int)
-			if !ok {
-				return "", fmt.Errorf("argument %v cannot be converted to int", args[0])
-			}
-			return r.Perm(n), nil
+		"randp": func(n int) []int {
+			return r.Perm(n)
 		},
-		"get_record": func(args ...any) (map[string]any, error) {
-			if len(args) != 2 {
-				return map[string]any{}, fmt.Errorf("get_record function expects 2 arguments: get_record(table string, line int)")
-			}
-			table, line := args[0].(string), args[1].(int)
+		"get_record": func(table string, line int) (map[string]any, error) {
 			return model.GetRecord(table, line, ec.Files), nil
 		},
-		"get_column": func(args ...any) ([]string, error) {
-			if len(args) != 2 {
-				return []string{}, fmt.Errorf("get_record function expects 2 arguments: get_column(table string, column string)")
-			}
-			table, column := args[0].(string), args[1].(string)
+		"get_column": func(table string, column string) ([]string, error) {
 			return model.GetColumnValues(table, column, ec.Files), nil
 		},
-		"payments": func(args ...any) ([]float64, error) {
-			if len(args) != 3 {
-				return []float64{}, fmt.Errorf("payments function expects 3 arguments: payments(total float64, installments int, percentage float64)")
-			}
-			total, ok := args[0].(float64)
-			if !ok {
-				return []float64{}, fmt.Errorf("total must be a float64, got %T", args[0])
-			}
-			installments, ok := args[1].(int)
-			if !ok {
-				return []float64{}, fmt.Errorf("installments must be an int, got %T", args[1])
-			}
-			percentage, ok := args[2].(float64)
-			if !ok {
-				return []float64{}, fmt.Errorf("percentage must be a float64, got %T", args[2])
-			}
-
+		"payments": func(total float64, installments int, percentage float64) ([]float64, error) {
 			if installments <= 0 {
 				return []float64{}, fmt.Errorf("installments must be a positive int, got %d", installments)
 			}
 			if percentage < 0.0 || percentage > 1.0 {
-				return []float64{}, fmt.Errorf("percentage must be float64 between 0.0 and 1.0: %s", args[2])
+				return []float64{}, fmt.Errorf("percentage must be float64 between 0.0 and 1.0: %v", percentage)
 			}
 			if installments == 1 {
 				return []float64{total, 0.0}, nil
@@ -202,32 +116,8 @@ func (ec *ExprContext) makeEnv(record map[string]any) map[string]any {
 			result := []float64{downPaymentAmount, installmentAmount}
 			return result, nil
 		},
-		"pmt": func(args ...any) (float64, error) {
-			if len(args) != 5 {
-				return 0, fmt.Errorf("pmt expected 5 arguments: pmt(rate float64, nper int, pv float64, fv float64, type int)")
-			}
-			rate, ok := args[0].(float64)
-			if !ok {
-				return 0, fmt.Errorf("rate must be a float64 got %T", args[0])
-			}
-			nper, ok := args[1].(int)
-			if !ok {
-				return 0, fmt.Errorf("nper must be an int, got %T", args[1])
-			}
-			pv, ok := args[2].(float64)
-			if !ok {
-				return 0, fmt.Errorf("pv must be a float64, got %T", args[2])
-			}
-			fv, ok := args[3].(float64)
-			if !ok {
-				return 0, fmt.Errorf("fv must be a float64, got %T", args[3])
-			}
-			typ, ok := args[4].(int)
-			if !ok {
-				return 0, fmt.Errorf("type must be a bool, got %T", args[4])
-			}
-
-			result, err := fin.Payment(rate, nper, pv, fv, typ)
+		"pmt": func(rate float64, nper int, pv float64, fv float64, pmtType int) (float64, error) {
+			result, err := fin.Payment(rate, nper, pv, fv, pmtType)
 			return result, err
 		},
 		"fakeit": func(function string, params map[string]any) (any, error) {
@@ -274,13 +164,16 @@ func (ec *ExprContext) makeEnv(record map[string]any) map[string]any {
 			sum := sha256.Sum256([]byte(data))
 			return fmt.Sprintf("%x", sum), nil
 		},
-	}
-
-	for k, v := range record {
-		if _, has := env[k]; has {
-			env["fn_"+k] = env[k]
-		}
-		env[k] = v
+		"pad": func(s string, char string, length int, left bool) string {
+			if len(s) >= length {
+				return s
+			}
+			padding := strings.Repeat(char, length-len(s))
+			if left {
+				return padding + s
+			}
+			return s + padding
+		},
 	}
 	return env
 }
@@ -304,8 +197,11 @@ func (ec *ExprContext) searchTable(sourceTable string, sourceColumn, sourceValue
 func (ec *ExprContext) searchValue(sourceFile model.CSVFile, sourceColumn, sourceValue, matchColumn string) (string, error) {
 	sourceColumnIndex := lo.IndexOf(sourceFile.Header, sourceColumn)
 	matchColumnIndex := lo.IndexOf(sourceFile.Header, matchColumn)
-	if sourceColumnIndex == -1 || matchColumnIndex == -1 {
-		return "", fmt.Errorf("column not found: %s ou %s in %s", sourceColumn, matchColumn, sourceFile.Name)
+	if sourceColumnIndex == -1 {
+		return "", fmt.Errorf("column not found: %s in %s", sourceColumn, sourceFile.Name)
+	}
+	if matchColumnIndex == -1 {
+		return "", fmt.Errorf("column not found: %s in %s", matchColumn, sourceFile.Name)
 	}
 	_, index, found := lo.FindIndexOf(sourceFile.Lines[sourceColumnIndex], func(item string) bool {
 		return item == sourceValue
@@ -320,18 +216,24 @@ func (ec *ExprContext) searchValue(sourceFile model.CSVFile, sourceColumn, sourc
 func (ec *ExprContext) searchRecord(sourceFile model.CSVFile, sourceColumn, sourceValue, matchColumn string, predicate string) (map[string]any, error) {
 	sourceColumnIndex := lo.IndexOf(sourceFile.Header, sourceColumn)
 	matchColumnIndex := lo.IndexOf(sourceFile.Header, matchColumn)
-	if sourceColumnIndex == -1 || matchColumnIndex == -1 {
-		return map[string]any{}, fmt.Errorf("column not found: %s ou %s in %s", sourceColumn, matchColumn, sourceFile.Name)
+	if sourceColumnIndex == -1 {
+		return map[string]any{}, fmt.Errorf("column not found: %s in %s", sourceColumn, sourceFile.Name)
+	}
+	if matchColumnIndex == -1 {
+		return map[string]any{}, fmt.Errorf("column not found: %s in %s", matchColumn, sourceFile.Name)
 	}
 	columnValues := sourceFile.Lines[sourceColumnIndex]
 	for i, item := range columnValues {
 		if item == sourceValue {
 			record := sourceFile.GetRecord(i)
 			if predicate != "" {
-				env := ec.makeEnv(record)
+				env := ec.makeEnv()
+				if err := ec.mergeEnv(env, record); err != nil {
+					return nil, err
+				}
 				match, err := ec.evaluate(predicate, env)
 				if err != nil {
-					return map[string]any{}, err
+					return nil, err
 				}
 				if !ec.AnyToBool(match) {
 					continue
@@ -353,7 +255,7 @@ func (ec *ExprContext) AnyToString(value any) string {
 		return v.Format(ec.Format)
 	case float64:
 		if ec.Format == "" {
-			ec.Format = "%g"
+			ec.Format = "%v"
 		}
 		return fmt.Sprintf(ec.Format, v)
 	case int:
