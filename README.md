@@ -33,6 +33,8 @@ A fast data generator that produces CSV files from generated relational data.
      - [once](#once)
      - [lookup](#lookup)
      - [dist](#dist)
+     - [lookup](#lookup)
+     - [dist](#dist)
 1. [Inputs](#inputs)
    - [csv](#csv)
 1. [Functions](#functions)
@@ -793,12 +795,10 @@ tables:
 
 The list of custom functions available are:
 
-- match(sourceTable string, sourceColumn string, sourceValue string, matchColumn string) *returns the `matchColumn` from `sourceTable` where `sourceColumn` has `SourceValue`*
-- add_date(years int, months int, days int, date any) *Adds the specified numbers of `years`,`months` and `days` to the given `date`*
-- rand(n int) *returns a pseudo-random between 0 and `n` when n is positive and between -n and o when n is negative*.
-- rand(min int, max int) *returns a pseudo-random integer between `min` and `max`, inclusive. Accepts both positive and negative values*
-- randf64() *returns a pseudo-random positive float64, as in the [math/rand package](https://pkg.go.dev/math/rand)*
-- randp(n int) *returns a pseudo-random permutation of the numbers [0, `n`), as in the [math/rand package](https://pkg.go.dev/math/rand)*
+- match(sourceTable string, sourceColumn string, sourceValue string, matchColumn string): (any, string) *returns the `matchColumn` from `sourceTable` where `sourceColumn` has `SourceValue`*
+- add_date(years int, months int, days int, date any):(any, error) *Adds the specified numbers of `years`,`months` and `days` to the given `date`*
+- rand(n int):int *returns a pseudo-random between 0 and `n` when n is positive and between -n and o when n is negative*.
+- randr(min int, max int):int *returns a pseudo-random integer between `min` and `max`, inclusive. Accepts both positive and negative values*
 - sha256(data strig) *returns the SHA256 checksum of the data.*
 - get_record(table string, line int) *returns a map[string]any with the row value for a given line of a in memory (processed) table*
 - get_column(table string, column string) *returns a [string]string with all column values of a in memory (processed) table*
@@ -1082,6 +1082,30 @@ You can set `format` for each table to control the formatted output value.
       predicate: int(order_items) > 5
       format: '02-01-2006'
 ```
+
+#### dist
+
+The `dist` generator is useful when you need to generate values based on weighted probabilities. This is particularly helpful for scenarios where certain values should appear more frequently than others according to predefined weights.
+
+The `values` parameter contains a list of possible values to be generated, while the `weights` parameter assigns a corresponding weight (integer) to each value. 
+The weights determine the likelihood of each value being selected, with higher weights resulting in more frequent occurrences of that value.
+
+For example, the configuration below would result in a column with 70 "dog", 20 "cats" and 10 "birds".
+
+```yaml
+tables:
+- name: people
+  count: 100
+  columns:
+    - name: pets
+      type: dist
+      processor:
+        values: [ dogs, cats, birds]
+        weigths: [ 7, 2, 1]
+```
+If the weights don't perfectly fill the count, additional values will be added until the desired total is reached. Once generated, the values are shuffled randomly to avoid any predictable order.
+
+The difference between `dist` and [set](#set) lies in how the distribuition is handled. In `set` the values are **randomly selected**, using the weights as probabilities for each selection. In contrast, the `dist` generator ensures that the values are **distributed proportionally** to their weights. In other words, with [set](#set), the outcome can deviate significantly from the weights, while with `dist`, the result will closely match the specified proportions.
 
 #### dist
 

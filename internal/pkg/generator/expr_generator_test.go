@@ -164,14 +164,6 @@ func TestGeneratorExprRandFunctions(t *testing.T) {
 			name:       "rand with value from other cell",
 			expression: "rand(int(parameter))",
 		},
-		{
-			name:       "rand float 64",
-			expression: "randf64()",
-		},
-		{
-			name:       "rand permutation",
-			expression: "randp(int(parameter))",
-		},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {

@@ -75,17 +75,11 @@ func (ec *ExprContext) makeEnv() map[string]any {
 			}
 			return r.Intn(n)
 		},
-		"randf64": func() float64 {
-			return r.Float64()
-		},
 		"randr": func(min int, max int) int {
 			if min > max {
 				min, max = max, min
 			}
 			return r.Intn(max-min+1) + min
-		},
-		"randp": func(n int) []int {
-			return r.Perm(n)
 		},
 		"get_record": func(table string, line int) (map[string]any, error) {
 			return model.GetRecord(table, line, ec.Files), nil
@@ -322,6 +316,7 @@ func initGofakeit() *gofakeit.Faker {
 			return gofakeit.Regex(pattern[0]), nil
 		},
 	}
+	gofakeit.AddFuncLookup("regex", regexInfo)
 	gofakeit.AddFuncLookup("regex", regexInfo)
 
 	faker := gofakeit.New(0)

@@ -71,7 +71,7 @@ tables:
       - name: max_loan
         type: expr
         processor:
-          expression: float(match('persons','person_id', billing_id, 'salary')) / 0.3
+          expression: float(match('persons','person_id', string(billing_id), 'salary')) / 0.3
           format: '%.2f'
       - name: ranged
         type: expr
@@ -80,7 +80,7 @@ tables:
       - name: random_value
         type: expr
         processor:
-          expression: rand()
+          expression: rand(10)
       - name: random_range
         type: expr
         processor:
