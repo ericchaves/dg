@@ -84,7 +84,7 @@ tables:
       - name: random_range
         type: expr
         processor:
-          expression: rand_range(-10, int(installments))
+          expression: randr(-10, int(installments))
       - name: min_value
         type: expr
         processor:

@@ -14,7 +14,7 @@ type LookupTable struct {
 	SourceValue  string `yaml:"source_value"`
 	Format       string `yaml:"format"`
 	Expression   string `yaml:"expression"`
-	Filter       string `yaml:"filter"`
+	Predicate    string `yaml:"predicate"`
 }
 
 type LookupGenerator struct {
@@ -43,7 +43,7 @@ func (g LookupGenerator) Generate(t model.Table, c model.Column, files map[strin
 	if count := len(baseTable.Lines[baseColumnIndex]); t.Count > count {
 		return fmt.Errorf("not enough values in base table: %d values, need %d", count, t.Count)
 	}
-	re := regexp.MustCompile(`value not found for \S+ in column \S+`)
+	re := regexp.MustCompile(`value \S+ not found in column \S+`)
 	var lines []string
 	rows := 0
 	for rows < t.Count {
@@ -81,25 +81,25 @@ func (g LookupGenerator) generate(matchValue string, lookupTables []LookupTable,
 		if lookup.SourceColumn == "" {
 			return []string{}, fmt.Errorf("source_column is required")
 		}
-		if lookup.SourceValue == "" {
-			return []string{}, fmt.Errorf("source_value is required")
+		if lookup.SourceValue == "" && lookup.Expression == "" {
+			return []string{}, fmt.Errorf("either source_value or expression is required")
 		}
-		record, err := ec.searchRecord(sourceFile, lookup.SourceColumn, value, lookup.SourceValue, lookup.Filter)
+		record, err := ec.searchRecord(sourceFile, lookup.SourceColumn, value, lookup.Predicate)
 		if err != nil {
 			return []string{}, err
 		}
-		env = ec.makeEnv()
-		if err := ec.mergeEnv(env, record); err != nil {
-			return []string{}, err
-		}
 		if lookup.Expression != "" {
+			env = ec.makeEnv()
+			if err := ec.mergeEnv(env, record); err != nil {
+				return []string{}, err
+			}
 			anyValue, err := ec.evaluate(lookup.Expression, env)
 			if err != nil {
 				return []string{}, err
 			}
 			value = ec.AnyToString(anyValue)
 		} else {
-			value = ec.AnyToString(env[lookup.SourceValue])
+			value = ec.AnyToString(record[lookup.SourceValue])
 		}
 	}
 

@@ -36,9 +36,9 @@ func (g MapGenerator) Generate(t model.Table, col model.Column, files map[string
 		if err := ec.mergeEnv(env, record); err != nil {
 			return err
 		}
-		env["index"] = indexValues[value]
-		env["count"] = countValues[value]
-		env["value"] = value
+		env[model.VALUE_INDEX] = indexValues[value]
+		env[model.VALUE_COUNT] = countValues[value]
+		env[model.ROW_VALUE] = value
 		result, err := ec.evaluate(g.Expression, env)
 		if err != nil {
 			return fmt.Errorf("error evaluating expression for row %d of value %s", row, value)

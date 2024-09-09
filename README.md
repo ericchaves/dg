@@ -30,9 +30,6 @@ A fast data generator that produces CSV files from generated relational data.
      - [case](#case)
      - [fk](#fk)
      - [map](#map)
-     - [once](#once)
-     - [lookup](#lookup)
-     - [dist](#dist)
      - [lookup](#lookup)
      - [dist](#dist)
 1. [Inputs](#inputs)
@@ -795,18 +792,17 @@ tables:
 
 The list of custom functions available are:
 
-- match(sourceTable string, sourceColumn string, sourceValue string, matchColumn string): (any, string) *returns the `matchColumn` from `sourceTable` where `sourceColumn` has `SourceValue`*
-- add_date(years int, months int, days int, date any):(any, error) *Adds the specified numbers of `years`,`months` and `days` to the given `date`*
-- rand(n int):int *returns a pseudo-random between 0 and `n` when n is positive and between -n and o when n is negative*.
-- randr(min int, max int):int *returns a pseudo-random integer between `min` and `max`, inclusive. Accepts both positive and negative values*
-- sha256(data strig) *returns the SHA256 checksum of the data.*
-- get_record(table string, line int) *returns a map[string]any with the row value for a given line of a in memory (processed) table*
-- get_column(table string, column string) *returns a [string]string with all column values of a in memory (processed) table*
-- payments(total float64, installments int, percentage float64) *returns a []float64, calculates the down payment and equal installment amounts based on a specified down payment percentage and number of installments*
-- pmt(rate float64, nper int, pv float64, fv float64, type int) *returns float64 fixed payment (principal + rate of interest) against a loan (fv=0) or future value given a initial deposit (pv). type indicates whether payment is made at the beginning (1) or end (0) of each period (nper)*
-- fakeit(name string, params map[string]any) *call a function from [gofakeit](https://pkg.go.dev/github.com/brianvoe/gofakeit/v7) by passing a map with the required arguments. the return value depends on the specific function called.*
-- sha256(data s): *returns the SHA256 checksum of the data.*
-- pad(s string, char string, length int, left bool): *returns the string padded with char to the left or right.*
+- match(sourceTable string, sourceColumn string, sourceValue string, matchColumn string) (any, string): *returns the `matchColumn` from `sourceTable` where `sourceColumn` has `SourceValue`*
+- add_date(years int, months int, days int, date any) (any, error): *Adds the specified numbers of `years`,`months` and `days` to the given `date`*
+- rand(n int) int: *returns a pseudo-random between 0 and `n` when n is positive and between -n and o when n is negative*.
+- randr(min int, max int) int: *returns a pseudo-random integer between `min` and `max`, inclusive. Accepts both positive and negative values*
+- get_record(table string, line int) (map[string]any, error): *returns a map[string]any with the row value for a given line of a in memory (processed) table*
+- get_column(table string, column string) ([]string, error): *returns a [string]string with all column values of a in memory (processed) table*
+- payments(total float64, installments int, percentage float64) ([]float64, error) *returns a []float64, calculates the down payment and equal installment amounts based on a specified down payment percentage and number of installments*
+- pmt(rate float64, nper int, pv float64, fv float64, type int)(float64, error): *returns float64 fixed payment (principal + rate of interest) against a loan (fv=0) or future value given a initial deposit (pv). type indicates whether payment is made at the beginning (1) or end (0) of each period (nper)*
+- fakeit(name string, params map[string]any) (any, error): *call a function from [gofakeit](https://pkg.go.dev/github.com/brianvoe/gofakeit/v7) by passing a map with the required arguments. the return value depends on the specific function called.*
+- sha256(data s) string: *returns the SHA256 checksum of the data.*
+- pad(s string, char string, length int, left bool) string: *returns the string padded with char to the left or right.*
 
 #### rand
 
@@ -987,7 +983,8 @@ The following custom variables are available for use in expressions:
 * **value**: Refers to the current value, formatted as a string.
 * **count**: Indicates the number of occurrences of **value**, expressed as an integer.
 * **index**: Denotes the current iterator number for **value** (e.g., 1 of 3, 2 of 3, etc.) starting with 1.
-* **Example** YAML configuration:
+
+**Example** YAML configuration:
 
 ```yaml
 - name: value_counts
@@ -1000,44 +997,22 @@ The following custom variables are available for use in expressions:
 If you want to count values from another column of the current table you can ommit `table` parameter.
 You can use `format` to control the formatted output value. 
 
-#### once
-
-The `once` generator reads values from a specified column in a source table and assigns them to rows in the target table, matching values based on a specified column in the target table, like the `match` generator.
-
-The `exactly` parameter is optional, and when true, the generator will ensure that each value is used only once. When `exactly` is false (its default) the generator will cycle through each available value if needed.  
-
-**Example** YAML configuration:
-
-```yaml
-- name: unique_assignment
-  type: once
-  processor:
-    source_table: source_table
-    source_column: unique_ids
-    source_value: value_column
-    match_column: match_column
-    exactly: true
-```
-
-In this example, the generator will:
-1. Look up values in the 'source_table'.
-2. Match the 'match_column' in the current table with the 'source_column' in the source table.
-3. When a match is found, it will assign the corresponding value from the 'source_value' column.
-4. Each value from 'source_value' is used only once.
-
 #### lookup
 
 The `lookup` generator allows you to generate values for columns in a table based on search logic across multiple tables.
 
-It behaves like a join, starting from the current table as base table. For each value in the `match_column`, it will look up the value on `source_table`.`source_colum` and once found, it will pick the value from `source_value` column. This process continues for the next item in the `tables` until it reaches the end, returning the last value of `source_value` to be used.
+It behaves like a join, starting from the current table as the base table and searching for each value in the `match_column`. The generator will pick the first item from the `tables` list and look for the current value in `source_table`.`source_column`. Once a match is found, either the value from `source_table`.`source_value` column is returned, or the output of the `expression`. This value will become the search value for the next item in `tables` until it reaches the end of the list, returning the last value to be used by the generator as the new column value.
 
-The `lookup` generator does not produce cartesian products; when it finds a value in the searched table, it stops the search and moves to the next table
+The `lookup` generator does not produce cartesian products; when it finds a value in the searched table, it stops the search and moves to the next table. In cases where the searched table has more than one value, we can use the `predicate` filter to instruct whether the current match should be used or if it should be skipped and the search should continue for another match.
 
-The `ignore_missing` attribute determines how the generator handles lookup failures. If `true`, the generator will ignore missing values and continue processing, using an empty value, similar to a left join. If `false`, it stops and returns an error when a value is not found. When omitted the default value `false` is assumed. 
+The `ignore_missing` attribute determines how the generator handles lookup failures. When `true`, the generator will ignore missing values and continue processing, using an empty value when no match is found, similar to a left join. When `false`, it stops and returns an error when a value is not found. When omitted the value `false` is assumed (default). 
 
 The following custom variables are available for use in expressions:
 
-* **row_number**: Represents the generated line number, provided as an integer. Start with 0.
+* **row_number**: Represents the line number where the match happened, provided as an integer, starting from 0.
+* **rows_skipped**: Represents the number of matches skipped until the current match is returned, provided as an integer, starting from 0.
+
+Those values are reset for each table search.
 
 ```yaml
 - name: last_purchase
@@ -1062,7 +1037,7 @@ In this example, the generator will:
 1. The retrieved `order_date` value is used to generate new data for the target column in the base table.
 
 Each lookup in table can declare an [expr](#expr) `expression` to return a calculated value when the match is found.
-Additionally, a companion `predicate` expression may be declared which will be evaluated when a match is found. If the predicate evaluates to `false`, the value is skipped, and the search continues, looking for another match, allowing different results to be returned using the `expression`.
+Additionally, a `predicate` expression may be declared which will be evaluated when a match is found. If the predicate evaluates to `false`, the value is skipped, and the search continues, looking for another match, allowing different results to be returned using the `expression`.
 
 You can set `format` for each table to control the formatted output value.
 
@@ -1082,30 +1057,6 @@ You can set `format` for each table to control the formatted output value.
       predicate: int(order_items) > 5
       format: '02-01-2006'
 ```
-
-#### dist
-
-The `dist` generator is useful when you need to generate values based on weighted probabilities. This is particularly helpful for scenarios where certain values should appear more frequently than others according to predefined weights.
-
-The `values` parameter contains a list of possible values to be generated, while the `weights` parameter assigns a corresponding weight (integer) to each value. 
-The weights determine the likelihood of each value being selected, with higher weights resulting in more frequent occurrences of that value.
-
-For example, the configuration below would result in a column with 70 "dog", 20 "cats" and 10 "birds".
-
-```yaml
-tables:
-- name: people
-  count: 100
-  columns:
-    - name: pets
-      type: dist
-      processor:
-        values: [ dogs, cats, birds]
-        weigths: [ 7, 2, 1]
-```
-If the weights don't perfectly fill the count, additional values will be added until the desired total is reached. Once generated, the values are shuffled randomly to avoid any predictable order.
-
-The difference between `dist` and [set](#set) lies in how the distribuition is handled. In `set` the values are **randomly selected**, using the weights as probabilities for each selection. In contrast, the `dist` generator ensures that the values are **distributed proportionally** to their weights. In other words, with [set](#set), the outcome can deviate significantly from the weights, while with `dist`, the result will closely match the specified proportions.
 
 #### dist
 

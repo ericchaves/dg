@@ -38,7 +38,7 @@ func (ec *ExprContext) makeEnv() map[string]any {
 	faker := initGofakeit()
 	env := map[string]any{
 		"match": func(sourceTable string, sourceColumn string, sourceValue string, matchColumn string) (any, error) {
-			value, err := ec.searchTable(sourceTable, sourceColumn, sourceValue, matchColumn)
+			value, err := ec.searchFile(sourceTable, sourceColumn, sourceValue, matchColumn)
 			if err != nil {
 				return nil, err
 			}
@@ -180,10 +180,10 @@ func (ec *ExprContext) evaluate(expression string, env any) (any, error) {
 	return output, nil
 }
 
-func (ec *ExprContext) searchTable(sourceTable string, sourceColumn, sourceValue, matchColumn string) (string, error) {
-	sourceFile, exists := ec.Files[sourceTable]
+func (ec *ExprContext) searchFile(sourceName string, sourceColumn, sourceValue, matchColumn string) (string, error) {
+	sourceFile, exists := ec.Files[sourceName]
 	if !exists {
-		return "", fmt.Errorf("table not found: %s", sourceTable)
+		return "", fmt.Errorf("table not found: %s", sourceName)
 	}
 	return ec.searchValue(sourceFile, sourceColumn, sourceValue, matchColumn)
 }
@@ -207,19 +207,17 @@ func (ec *ExprContext) searchValue(sourceFile model.CSVFile, sourceColumn, sourc
 	return "", fmt.Errorf("value not found for %s in column %s", sourceValue, sourceColumn)
 }
 
-func (ec *ExprContext) searchRecord(sourceFile model.CSVFile, sourceColumn, sourceValue, matchColumn string, predicate string) (map[string]any, error) {
+func (ec *ExprContext) searchRecord(sourceFile model.CSVFile, sourceColumn, matchValue string, predicate string) (map[string]any, error) {
 	sourceColumnIndex := lo.IndexOf(sourceFile.Header, sourceColumn)
-	matchColumnIndex := lo.IndexOf(sourceFile.Header, matchColumn)
 	if sourceColumnIndex == -1 {
 		return map[string]any{}, fmt.Errorf("column not found: %s in %s", sourceColumn, sourceFile.Name)
 	}
-	if matchColumnIndex == -1 {
-		return map[string]any{}, fmt.Errorf("column not found: %s in %s", matchColumn, sourceFile.Name)
-	}
 	columnValues := sourceFile.Lines[sourceColumnIndex]
+	skipped := 0
 	for i, item := range columnValues {
-		if item == sourceValue {
+		if item == matchValue {
 			record := sourceFile.GetRecord(i)
+			record[model.ROWS_SKIPPED] = skipped
 			if predicate != "" {
 				env := ec.makeEnv()
 				if err := ec.mergeEnv(env, record); err != nil {
@@ -230,6 +228,7 @@ func (ec *ExprContext) searchRecord(sourceFile model.CSVFile, sourceColumn, sour
 					return nil, err
 				}
 				if !ec.AnyToBool(match) {
+					skipped++
 					continue
 				}
 			}
@@ -237,7 +236,7 @@ func (ec *ExprContext) searchRecord(sourceFile model.CSVFile, sourceColumn, sour
 		}
 	}
 
-	return map[string]any{}, fmt.Errorf("value not found for %s in column %s", sourceValue, sourceColumn)
+	return map[string]any{}, fmt.Errorf("value %s not found in column %s", matchValue, sourceColumn)
 }
 
 func (ec *ExprContext) AnyToString(value any) string {

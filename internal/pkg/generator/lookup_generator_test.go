@@ -174,49 +174,43 @@ func TestExprContext_SearchRecord(t *testing.T) {
 			Name:   "test",
 			Header: []string{"id", "name", "age"},
 			Lines: [][]string{
-				{"1", "2", "3"},
-				{"Alice", "Bob", "Charlie"},
-				{"25", "30", "35"},
+				{"1", "2", "3", "4"},
+				{"Alice", "Bob", "Charlie", "Bob"},
+				{"25", "30", "35", "35"},
 			},
 		},
 	}
 
 	ec := &ExprContext{Files: files}
 
-	t.Run("Valid search", func(t *testing.T) {
-		record, err := ec.searchRecord(files["test"], "name", "Bob", "age", "")
+	t.Run("Valid search without predicate", func(t *testing.T) {
+		record, err := ec.searchRecord(files["test"], "name", "Bob", "")
 		assert.NoError(t, err)
-		assert.Equal(t, map[string]any{"id": "2", "name": "Bob", "age": "30", "row_number": 1}, record)
+		assert.Equal(t, map[string]any{"id": "2", "name": "Bob", "age": "30", "row_number": 1, "rows_skipped": 0}, record)
 	})
 
 	t.Run("Invalid source column", func(t *testing.T) {
-		_, err := ec.searchRecord(files["test"], "invalid", "Bob", "age", "")
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "column not found")
-	})
-
-	t.Run("Invalid match column", func(t *testing.T) {
-		_, err := ec.searchRecord(files["test"], "name", "Bob", "invalid", "")
+		_, err := ec.searchRecord(files["test"], "invalid", "Bob", "")
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "column not found")
 	})
 
 	t.Run("Value not found", func(t *testing.T) {
-		_, err := ec.searchRecord(files["test"], "name", "David", "age", "")
+		_, err := ec.searchRecord(files["test"], "name", "David", "")
 		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "value not found")
+		assert.Contains(t, err.Error(), "value David not found")
 	})
 
-	t.Run("With Filter", func(t *testing.T) {
-		record, err := ec.searchRecord(files["test"], "name", "Bob", "age", "int(age) > 25")
+	t.Run("With Predicate", func(t *testing.T) {
+		record, err := ec.searchRecord(files["test"], "name", "Bob", "int(age) > 30")
 		assert.NoError(t, err)
-		assert.Equal(t, map[string]any{"id": "2", "name": "Bob", "age": "30", "row_number": 1}, record)
+		assert.Equal(t, map[string]any{"id": "4", "name": "Bob", "age": "35", "row_number": 3, "rows_skipped": 1}, record)
 	})
 
-	t.Run("Filter not satisfied", func(t *testing.T) {
-		_, err := ec.searchRecord(files["test"], "name", "Bob", "age", "int(age) > 35")
+	t.Run("Predicate not satisfied", func(t *testing.T) {
+		_, err := ec.searchRecord(files["test"], "name", "Bob", "int(age) > 35")
 		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "value not found")
+		assert.Contains(t, err.Error(), "value Bob not found")
 	})
 }
 

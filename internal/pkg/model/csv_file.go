@@ -7,6 +7,10 @@ import (
 )
 
 const ROW_NUMBER = "row_number"
+const ROWS_SKIPPED = "rows_skipped"
+const ROW_VALUE = "value"
+const VALUE_INDEX = "index"
+const VALUE_COUNT = "count"
 
 // CSVFile represents the content of a CSV file.
 type CSVFile struct {
@@ -109,6 +113,7 @@ func (c *CSVFile) GetRecord(lineNumber int) map[string]any {
 		}
 	}
 	record[ROW_NUMBER] = lineNumber
+	record[ROWS_SKIPPED] = 0
 	if empty {
 		return map[string]any{}
 	}
