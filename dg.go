@@ -24,10 +24,22 @@ var (
 	version string
 )
 
+type arrayFlags []string
+
+func (i *arrayFlags) String() string {
+	return strings.Join(*i, ", ")
+}
+
+func (i *arrayFlags) Set(value string) error {
+	*i = append(*i, value)
+	return nil
+}
+
 func main() {
 	log.SetFlags(0)
 
-	configPath := flag.String("c", "", "the absolute or relative path to the config file")
+	var configPaths arrayFlags
+	flag.Var(&configPaths, "c", "the absolute or relative path to the config file (can be used multiple times)")
 	outputDir := flag.String("o", ".", "the absolute or relative path to the output dir")
 	createImports := flag.String("i", "", "write import statements to file")
 	cpuprofile := flag.String("cpuprofile", "", "write cpu profile to file")
@@ -44,7 +56,7 @@ func main() {
 		return
 	}
 
-	if *configPath == "" {
+	if len(configPaths) == 0 {
 		flag.Usage()
 		os.Exit(2)
 	}
@@ -52,14 +64,14 @@ func main() {
 	tt := ui.TimeTracker(os.Stdout, realClock{}, 40)
 	defer tt(time.Now(), "done")
 
-	c, err := loadConfig(*configPath, tt)
+	c, err := loadConfigs(configPaths, tt)
 	if err != nil {
-		log.Fatalf("error loading config: %v", err)
+		log.Fatalf("error loading configs: %v", err)
 	}
 
 	files := make(map[string]model.CSVFile)
 
-	if err = loadInputs(c, path.Dir(*configPath), tt, files); err != nil {
+	if err = loadInputs(c, path.Dir(configPaths[0]), tt, files); err != nil {
 		log.Fatalf("error loading inputs: %v", err)
 	}
 
@@ -92,16 +104,26 @@ func main() {
 	log.Fatal(web.Serve(*outputDir, *port))
 }
 
-func loadConfig(filename string, tt ui.TimerFunc) (model.Config, error) {
-	defer tt(time.Now(), "loaded config file")
+func loadConfigs(filenames []string, tt ui.TimerFunc) (model.Config, error) {
+	defer tt(time.Now(), "loaded config files")
 
-	file, err := os.Open(filename)
-	if err != nil {
-		return model.Config{}, fmt.Errorf("opening file: %w", err)
+	var mergedConfig model.Config
+
+	for _, filename := range filenames {
+		file, err := os.Open(filename)
+		if err != nil {
+			return model.Config{}, fmt.Errorf("opening file %s: %w", filename, err)
+		}
+		defer file.Close()
+
+		config, err := model.LoadConfig(file)
+		if err != nil {
+			return model.Config{}, fmt.Errorf("loading config from %s: %w", filename, err)
+		}
+		mergedConfig = model.MergeConfig(mergedConfig, config)
 	}
-	defer file.Close()
 
-	return model.LoadConfig(file)
+	return mergedConfig, nil
 }
 
 func loadInputs(c model.Config, configDir string, tt ui.TimerFunc, files map[string]model.CSVFile) error {

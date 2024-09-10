@@ -1,0 +1,36 @@
+inputs:
+  - name: market
+    type: csv
+    source:
+      file_name: invalid_market.csv
+
+tables:
+  - name: events
+    count: 30
+
+  - name: one
+    columns:
+      - name: c2
+        type: const
+        processor:
+          values: [d, e, f ]
+
+  - name: market_product
+    count: 10
+    columns:
+      - name: id
+        type: gen
+        processor:
+          value: ${uuid}
+      - name: market
+        type: set
+        processor:
+          values: ["us", "in"]
+      - name: region
+        type: match
+        processor:
+          source_table: market
+          source_column: code
+          source_value: region
+          match_column: market
+

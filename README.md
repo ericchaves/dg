@@ -20,9 +20,9 @@ A fast data generator that produces CSV files from generated relational data.
    - [each](#each)
    - [range](#range)
    - [match](#match)
-   - [Experimental generators](#experimental-generators)
+   - [Experimental Features](#experimental-features)
+     - [range from features](#range-from-features)
      - [gen templates](#gen-templates)
-     - [range partitioned tables](#range-partitioned-tables)
      - [cuid2](#cuid2)
      - [expr](#expr)
      - [rand](#rand)
@@ -32,6 +32,7 @@ A fast data generator that produces CSV files from generated relational data.
      - [map](#map)
      - [lookup](#lookup)
      - [dist](#dist)
+     - [multiple configs](#multiple-configs)
 1. [Inputs](#inputs)
    - [csv](#csv)
 1. [Functions](#functions)
@@ -531,6 +532,8 @@ The range generate currently supports the following data types:
 - `date` - Generate dates between a from and to value
 - `int` - Generate integers between a from and to value
 
+There are two additional ways to define the starting value, beyond the `from` attribute. Please check the [range from features](#range-from-features)
+
 ##### match
 
 Generates data by matching data in another table. In this example, we'll assume there's a CSV file for the `significant_event` input that generates the following table:
@@ -579,32 +582,20 @@ dg will match rows in the significant_event table with rows in the events table 
 | 2023-01-13    |                |
 
 
-### Experimental generators
+### Experimental Features
 
-The following generators where recently added and may contain bugs.
+The following features and generators where recently added and may contain bugs.
 
-#### gen templates
+#### range-from-features
 
-You canuse [go-fakeit](https://pkg.go.dev/github.com/brianvoe/gofakeit/v7) functions and types with a `template` in a `gen` generator:
+There are two additional ways to define the starting value, beyond the `from` attribute:
 
-```yaml
-  - name: rating
-    type: gen
-    processor:
-      template: '{{starrating}}'
-  - name: comment
-    type: gen
-    processor:
-      template: '{{setence}}'
-  - name: description
-    type: gen
-    processor:
-      template: '{{LoremIpsumSentence 10}}'
-```
+1. **Run an external `cmd`**: The generator can execute an external command defined with `cmd` attribute, and it will use the output from stdout as the starting value for from. Its important that the output is either a valid integer or valid string date, compatible with the expected value in `from`.
+1. **Pickup up from a source `table`**: You can specify the `table` attribute to have the range generator continue from the last value of the same column in source table. 
 
-#### range partitioned tables
+These mechanisms allow, for example, the creation of partitioned files where you declare multiple tables named `customers.1`, `customers.2`, and so on. Each table will have the same column definitions, but their generators will have different parameters to cover different scenarios.
 
-You can declare an optional `table` attribute to have the range generator continue `from` the last value of the source table, allowing the creation of partitioned files. The generator does not have access to the source table definition, so it is important to ensure that all column definitions are the same in both tables, with the exception of the `table` and `from` attributes in the secondary table.
+The generator does not have access to the source table's `columns` definition, so it's important to ensure that all column definitions are consistent across each generator, according to the specification of the base table.
 
 ```yaml
 tables:
@@ -625,6 +616,25 @@ tables:
           table: events.1
           type: int
           step: 1
+```
+
+#### gen templates
+
+You canuse [go-fakeit](https://pkg.go.dev/github.com/brianvoe/gofakeit/v7) functions and types with a `template` in a `gen` generator:
+
+```yaml
+  - name: rating
+    type: gen
+    processor:
+      template: '{{starrating}}'
+  - name: comment
+    type: gen
+    processor:
+      template: '{{setence}}'
+  - name: description
+    type: gen
+    processor:
+      template: '{{LoremIpsumSentence 10}}'
 ```
 
 #### cuid2
@@ -1081,6 +1091,41 @@ tables:
 If the weights don't perfectly fill the count, additional values will be added until the desired total is reached. Once generated, the values are shuffled randomly to avoid any predictable order.
 
 The difference between `dist` and [set](#set) lies in how the distribuition is handled. In `set` the values are **randomly selected**, using the weights as probabilities for each selection. In contrast, the `dist` generator ensures that the values are **distributed proportionally** to their weights. In other words, with [set](#set), the outcome can deviate significantly from the weights, while with `dist`, the result will closely match the specified proportions.
+
+#### Multiple Configs
+
+In complex databases where there is a large number of tables with multiple cardinalities and dependencies, the config file may become too big and hard to maintain, particularly if the database is in a stage where changes are frequent. In this case, it may be desirable to break the config into a set of files. When running `dg`, you can pass multiple config files by repeating the config flag multiple times, like this:
+
+```bash
+dg -c ./path/to/base.yaml -c ./path/to/extra-tables.yaml -c ./path/to/base-override.yaml -o ./output/
+```
+
+In this case, `dg` will merge all config files and use the result to generate the files. The merge logic is very basic but has some tricky points and may be hard to debug, so it is advised to plan this carefully.
+
+- The list of config files is combined in pairs, in the order declared from left to right.
+- Each input item in the input list is compared from left (base) to right (incoming) by the value of its name.
+  - If the value is the same, the entire "base" item is replaced by the "incoming" item.
+  - If the incoming item is not present in the base input list, it is added.
+- Then, each table is compared from left (base) to right (incoming) by their name:
+  - If the table names match:
+    - The incoming table count **always overrides** the base table count. If the incoming table count is omitted, the count value of `0` is assumed.
+    - The incoming table suppress flag **always overrides** the base suppress flag. If the incoming suppress flag is omitted, the default value is `false`.
+    - If the incoming table columns are omitted, the base columns are used as-is.
+    - If the incoming table columns are declared, the base columns are replaced entirely by the incoming columns without any comparison or merging of individual column items.
+  - If the incoming table is not present in the base config, it is added.
+
+These rules are designed to make it easier to plan the merging of multiple configs:
+
+- You can add or replace input items, but not remove them.
+- You can add or update tables, but not remove them.
+- You can declare the table spec in base config files, and in other config files, you can just declare their name and update the count or suppress flag.
+- You can redefine the columns of a previously declared table, but only in its entirety. Columns are never merged on a per-item basis.
+
+In the example `dg -c ./path/to/base-tables.yaml -c ./path/to/extra-tables.yaml -c ./path/to/overrides.yaml -o ./output/`, first `base-tables.yaml` will be merged with `extra-tables.yaml`, and then the result will be merged with `overrides.yaml`.
+
+In this example, we could define two sets of tables in different files (`base.yaml` and `extra-tables.yaml`). The base.yaml file would contain a set of tables that are related either by subject or because they reference each other. The `extra-tables.yaml` file would contain a second set of tables, perhaps because they were added to the database later or because they don't depend on any tables from the base.yaml.
+
+Each config file would specify the number of rows to be generated (the count value for each table), and since each file would have a small number of tables, it would be easier to debug and test each file independently. Then, in the `overrides.yaml` file, we can redefine some tables from either file with higher count values, but without redeclaring their columns. This way, when we run all three config files together, we effectively control the output without needing to maintain multiple copies of the config files, which would be harder to manage.
 
 ### Inputs
 

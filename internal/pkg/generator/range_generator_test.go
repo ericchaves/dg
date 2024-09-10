@@ -18,8 +18,10 @@ func TestGenerateRangeColumn(t *testing.T) {
 		to       string
 		step     string
 		format   string
+		command  string
+		table    string
 		expLines []string
-		expErr   error
+		expError string
 	}{
 		{
 			name: "generates date range for existing table",
@@ -151,6 +153,43 @@ func TestGenerateRangeColumn(t *testing.T) {
 				"4",
 			},
 		},
+		{
+			name:     "fails when from, command, and table are all specified",
+			files:    map[string]model.CSVFile{},
+			rtype:    "int",
+			count:    5,
+			from:     "1",
+			command:  "echo 5",
+			table:    "some_table",
+			expError: "multiple sources defined. please use just one of table, from or cmd",
+		},
+		{
+			name:     "fails when from and command are specified",
+			files:    map[string]model.CSVFile{},
+			rtype:    "int",
+			count:    5,
+			from:     "1",
+			command:  "echo 5",
+			expError: "multiple sources defined. please use just one of table, from or cmd",
+		},
+		{
+			name:     "fails when from and table are specified",
+			files:    map[string]model.CSVFile{},
+			rtype:    "int",
+			count:    5,
+			from:     "1",
+			table:    "some_table",
+			expError: "multiple sources defined. please use just one of table, from or cmd",
+		},
+		{
+			name:     "fails when command and table are specified",
+			files:    map[string]model.CSVFile{},
+			rtype:    "int",
+			count:    5,
+			command:  "echo 5",
+			table:    "some_table",
+			expError: "multiple sources defined. please use just one of table, from or cmd",
+		},
 	}
 
 	for _, c := range cases {
@@ -165,23 +204,25 @@ func TestGenerateRangeColumn(t *testing.T) {
 			}
 
 			g := RangeGenerator{
-				Type:   c.rtype,
-				From:   c.from,
-				To:     c.to,
-				Step:   c.step,
-				Format: c.format,
+				Type:    c.rtype,
+				From:    c.from,
+				To:      c.to,
+				Step:    c.step,
+				Format:  c.format,
+				Table:   c.table,
+				Command: c.command,
 			}
 
 			files := c.files
 
 			err := g.Generate(table, column, files)
-			assert.Equal(t, c.expErr, err)
 
-			if err != nil {
-				return
+			if c.expError != "" {
+				assert.EqualError(t, err, c.expError)
+			} else {
+				assert.NoError(t, err)
+				assert.Equal(t, c.expLines, files["table"].Lines[len(files["table"].Lines)-1])
 			}
-
-			assert.Equal(t, c.expLines, files["table"].Lines[len(files["table"].Lines)-1])
 		})
 	}
 }
@@ -272,6 +313,65 @@ func TestGenerateDateSlice(t *testing.T) {
 			}
 
 			assert.Equal(t, c.expSlice, actSlice)
+		})
+	}
+}
+
+func TestGenerateFromExternalCommand(t *testing.T) {
+	cases := []struct {
+		name     string
+		command  string
+		ctype    string
+		count    int
+		to       string
+		step     string
+		expLines []string
+		expError string
+	}{
+		{
+			name:     "generates int from external command",
+			command:  "echo 5",
+			ctype:    "int",
+			count:    5,
+			step:     "1",
+			expLines: []string{"5", "6", "7", "8", "9"},
+		},
+		{
+			name:     "fails with invalid command",
+			command:  "invalid_command",
+			ctype:    "int",
+			count:    5,
+			expError: "failed to execute cmd: exec: \"invalid_command\": executable file not found in $PATH",
+		},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			table := model.Table{
+				Name:  "table",
+				Count: c.count,
+			}
+
+			column := model.Column{
+				Name: "col",
+			}
+
+			g := RangeGenerator{
+				Type:    c.ctype,
+				Command: c.command,
+				To:      c.to,
+				Step:    c.step,
+			}
+
+			files := map[string]model.CSVFile{}
+			err := g.Generate(table, column, files)
+
+			if c.expError != "" {
+				assert.EqualError(t, err, c.expError)
+			} else {
+				assert.NoError(t, err)
+				assert.Equal(t, c.expLines, files["table"].Lines[len(files["table"].Lines)-1])
+			}
 		})
 	}
 }

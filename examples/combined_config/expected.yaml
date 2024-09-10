@@ -1,0 +1,57 @@
+inputs:
+  - name: significant_event
+    type: csv
+    source:
+      file_name: significant_dates.csv
+  - name: market
+    type: csv
+    source:
+      file_name: market.csv
+tables:
+  - name: events
+    count: 30
+    columns:
+      - name: timeline_date
+        type: range
+        processor:
+          type: date
+          from: 1885-01-01
+          to: 1985-10-26
+          format: 2006-01-02
+          step: 24h
+      - name: timeline_event
+        type: match
+        processor:
+          source_table: significant_event
+          source_column: date
+          source_value: events
+          match_column: timeline_date
+  - name: one
+    columns:
+      - name: c2
+        type: const
+        processor:
+          values:
+            - d
+            - e
+            - f
+  - name: market_product
+    suppress: true
+    columns:
+      - name: id
+        type: range
+        processor:
+          value: ${uuid}
+      - name: market
+        type: set
+        processor:
+          values:
+            - us
+            - in
+      - name: region
+        type: match
+        processor:
+          source_table: market
+          source_column: code
+          source_value: region
+          match_column: market

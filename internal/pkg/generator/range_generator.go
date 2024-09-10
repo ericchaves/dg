@@ -2,7 +2,9 @@ package generator
 
 import (
 	"fmt"
+	"os/exec"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/codingconcepts/dg/internal/pkg/model"
@@ -11,22 +13,43 @@ import (
 
 // RangeGenerator provides additional context to a range column.
 type RangeGenerator struct {
-	Table  string `yaml:"table"`
-	Type   string `yaml:"type"`
-	From   string `yaml:"from"`
-	To     string `yaml:"to"`
-	Step   string `yaml:"step"`
-	Format string `yaml:"format"`
+	Command string `yaml:"cmd"`
+	Table   string `yaml:"table"`
+	Type    string `yaml:"type"`
+	From    string `yaml:"from"`
+	To      string `yaml:"to"`
+	Step    string `yaml:"step"`
+	Format  string `yaml:"format"`
 }
 
 // Generate sequential data between a given start and end range.
 func (g RangeGenerator) Generate(t model.Table, c model.Column, files map[string]model.CSVFile) error {
+
 	count := len(lo.MaxBy(files[t.Name].Lines, func(a, b []string) bool {
 		return len(a) > len(b)
 	}))
 
 	if count == 0 {
 		count = t.Count
+	}
+
+	sources := []string{g.Table, g.From, g.Command}
+	if dup := lo.CountBy(sources, func(s string) bool { return s != "" }); dup > 1 {
+		return fmt.Errorf("multiple sources defined. please use just one of table, from or cmd")
+	}
+
+	if g.Command != "" {
+		parts := strings.Fields(g.Command)
+		if len(parts) == 0 {
+			return fmt.Errorf("empty command")
+		}
+		cmd := exec.Command(parts[0], parts[1:]...)
+		stdout, err := cmd.Output()
+		if err != nil {
+			return fmt.Errorf("failed to execute cmd: %s", err)
+		}
+		output := strings.TrimSpace(string(stdout))
+		g.From = output
 	}
 
 	if g.Table != "" {

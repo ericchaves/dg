@@ -1,0 +1,10 @@
+inputs:
+  - name: market
+    suppress: true
+    type: csv
+    source:
+      file_name: market.csv
+tables:
+  - name: market_product
+    suppress: true
+

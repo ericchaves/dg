@@ -57,9 +57,13 @@ data_case:
 data_fk:
 	go run dg.go -c ./examples/fk_test/config.yaml -o ./csvs/fk_test -i import.sql
 
+data_combined:
+	go run dg.go -c ./examples/combined_config/config1.yaml -c ./examples/combined_config/config2.yaml \
+		-c ./examples/combined_config/config3.yaml  -o ./csvs/combined_config -i import.sql
+
 data: data_many_to_many data_person data_range_test data_input_test data_unique_test data_const_test \
 	data_match data_each_match data_pattern data_cuid2 data_template data_rel_date data_rand data_expr \
-	data_case data_fk
+	data_case data_fk data_combined
 	echo "done"
 
 file_server:
