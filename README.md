@@ -802,17 +802,17 @@ tables:
 
 The list of custom functions available are:
 
-- match(sourceTable string, sourceColumn string, sourceValue string, matchColumn string) (any, string): *returns the `matchColumn` from `sourceTable` where `sourceColumn` has `SourceValue`*
-- add_date(years int, months int, days int, date any) (any, error): *Adds the specified numbers of `years`,`months` and `days` to the given `date`*
-- rand(n int) int: *returns a pseudo-random between 0 and `n` when n is positive and between -n and o when n is negative*.
-- randr(min int, max int) int: *returns a pseudo-random integer between `min` and `max`, inclusive. Accepts both positive and negative values*
-- get_record(table string, line int) (map[string]any, error): *returns a map[string]any with the row value for a given line of a in memory (processed) table*
-- get_column(table string, column string) ([]string, error): *returns a [string]string with all column values of a in memory (processed) table*
-- payments(total float64, installments int, percentage float64) ([]float64, error) *returns a []float64, calculates the down payment and equal installment amounts based on a specified down payment percentage and number of installments*
-- pmt(rate float64, nper int, pv float64, fv float64, type int)(float64, error): *returns float64 fixed payment (principal + rate of interest) against a loan (fv=0) or future value given a initial deposit (pv). type indicates whether payment is made at the beginning (1) or end (0) of each period (nper)*
-- fakeit(name string, params map[string]any) (any, error): *call a function from [gofakeit](https://pkg.go.dev/github.com/brianvoe/gofakeit/v7) by passing a map with the required arguments. the return value depends on the specific function called.*
-- sha256(data s) string: *returns the SHA256 checksum of the data.*
-- pad(s string, char string, length int, left bool) string: *returns the string padded with char to the left or right.*
+- **match(sourceTable string, sourceColumn string, sourceValue string, matchColumn string)** (any, string): *returns the `matchColumn` from `sourceTable` where `sourceColumn` has `SourceValue`*
+- **add_date(years int, months int, days int, date any)** (any, error): *Adds the specified numbers of `years`,`months` and `days` to the given `date`*
+- **rand(n int)** int: *returns a pseudo-random between 0 and `n` when n is positive and between -n and o when n is negative*.
+- **randr(min int, max int)** int: *returns a pseudo-random integer between `min` and `max`, inclusive. Accepts both positive and negative values*
+- **get_record(table string, line int)** (map[string]any, error): *returns a map[string]any with the row value for a given line of a in memory (processed) table*
+- **get_column(table string, column string)** ([]string, error): *returns a [string]string with all column values of a in memory (processed) table*
+- **payments(total float64, installments int, percentage float64)** ([]float64, error) *returns a []float64, calculates the down payment and equal installment amounts based on a specified down payment percentage and number of installments*
+- **pmt(rate float64, nper int, pv float64, fv float64, type int)** (float64, error): *returns float64 fixed payment (principal + rate of interest) against a loan (fv=0) or future value given a initial deposit (pv). type indicates whether payment is made at the beginning (1) or end (0) of each period (nper)*
+- **fakeit(name string, params map[string]any)** (any, error): *call a function from [gofakeit](https://pkg.go.dev/github.com/brianvoe/gofakeit/v7) by passing a map with the required arguments. the return value depends on the specific function called.*
+- **sha256(data s)** string: *returns the SHA256 checksum of the data.*
+- **pad(s string, char string, length int, left bool)** string: *returns the string padded with char to the left or right.*
 
 #### rand
 
