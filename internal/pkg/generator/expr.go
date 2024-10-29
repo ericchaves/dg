@@ -13,6 +13,7 @@ import (
 	"github.com/brianvoe/gofakeit/v7"
 	"github.com/codingconcepts/dg/internal/pkg/model"
 	"github.com/expr-lang/expr"
+	"github.com/gosimple/slug"
 	"github.com/martinusso/go-docs/cnpj"
 	"github.com/martinusso/go-docs/cpf"
 	"github.com/samber/lo"
@@ -86,6 +87,13 @@ func (ec *ExprContext) makeEnv() map[string]any {
 		},
 		"get_column": func(table string, column string) ([]string, error) {
 			return model.GetColumnValues(table, column, ec.Files), nil
+		},
+		"get_model": func(table string) (model.CSVFile, error) {
+			file, ok := ec.Files[table]
+			if !ok {
+				return model.CSVFile{}, fmt.Errorf("table %s not found", table)
+			}
+			return file, nil
 		},
 		"payments": func(total float64, installments int, percentage float64) ([]float64, error) {
 			if installments <= 0 {
@@ -167,6 +175,12 @@ func (ec *ExprContext) makeEnv() map[string]any {
 				return padding + s
 			}
 			return s + padding
+		},
+		"slug": func(s string, lang string) string {
+			if lang == "" {
+				lang = "en"
+			}
+			return slug.MakeLang(s, lang)
 		},
 	}
 	return env

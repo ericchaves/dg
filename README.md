@@ -802,17 +802,19 @@ tables:
 
 The list of custom functions available are:
 
-- match(sourceTable string, sourceColumn string, sourceValue string, matchColumn string) (any, string): *returns the `matchColumn` from `sourceTable` where `sourceColumn` has `SourceValue`*
-- add_date(years int, months int, days int, date any) (any, error): *Adds the specified numbers of `years`,`months` and `days` to the given `date`*
-- rand(n int) int: *returns a pseudo-random between 0 and `n` when n is positive and between -n and o when n is negative*.
-- randr(min int, max int) int: *returns a pseudo-random integer between `min` and `max`, inclusive. Accepts both positive and negative values*
-- get_record(table string, line int) (map[string]any, error): *returns a map[string]any with the row value for a given line of a in memory (processed) table*
-- get_column(table string, column string) ([]string, error): *returns a [string]string with all column values of a in memory (processed) table*
-- payments(total float64, installments int, percentage float64) ([]float64, error) *returns a []float64, calculates the down payment and equal installment amounts based on a specified down payment percentage and number of installments*
-- pmt(rate float64, nper int, pv float64, fv float64, type int)(float64, error): *returns float64 fixed payment (principal + rate of interest) against a loan (fv=0) or future value given a initial deposit (pv). type indicates whether payment is made at the beginning (1) or end (0) of each period (nper)*
-- fakeit(name string, params map[string]any) (any, error): *call a function from [gofakeit](https://pkg.go.dev/github.com/brianvoe/gofakeit/v7) by passing a map with the required arguments. the return value depends on the specific function called.*
-- sha256(data s) string: *returns the SHA256 checksum of the data.*
-- pad(s string, char string, length int, left bool) string: *returns the string padded with char to the left or right.*
+- **match(sourceTable string, sourceColumn string, sourceValue string, matchColumn string)** (any, string): *returns the `matchColumn` from `sourceTable` where `sourceColumn` has `SourceValue`*
+- **add_date(years int, months int, days int, date any)** (any, error): *Adds the specified numbers of `years`,`months` and `days` to the given `date`*
+- **rand(n int)** int: *returns a pseudo-random between 0 and `n` when n is positive and between -n and o when n is negative*.
+- **randr(min int, max int)** int: *returns a pseudo-random integer between `min` and `max`, inclusive. Accepts both positive and negative values*
+- **get_record(table string, line int)** (map[string]any, error): *returns a map[string]any with the row value for a given line of a in memory (processed) table*
+- **get_column(table string, column string)** ([]string, error): *returns a [string]string with all column values of a in memory (processed) table*
+- **get_model(table string)** (CSVFile, error): *returns the in memory CSVFile struct of the given table*
+- **payments(total float64, installments int, percentage float64)** ([]float64, error) *returns a []float64, calculates the down payment and equal installment amounts based on a specified down payment percentage and number of installments*
+- **pmt(rate float64, nper int, pv float64, fv float64, type int)** (float64, error): *returns float64 fixed payment (principal + rate of interest) against a loan (fv=0) or future value given a initial deposit (pv). type indicates whether payment is made at the beginning (1) or end (0) of each period (nper)*
+- **fakeit(name string, params map[string]any)** (any, error): *call a function from [gofakeit](https://pkg.go.dev/github.com/brianvoe/gofakeit/v7) by passing a map with the required arguments. the return value depends on the specific function called.*
+- **sha256(data s)** string: *returns the SHA256 checksum of the data.*
+- **pad(s string, char string, length int, left bool)** string: *returns the string padded with char to the left or right.*
+- **slug(s string, lang string)** string: *returns the slugfied string. if lang is blank "en" is assumed.*
 
 #### rand
 
@@ -1090,6 +1092,20 @@ tables:
 ```
 If the weights don't perfectly fill the count, additional values will be added until the desired total is reached. Once generated, the values are shuffled randomly to avoid any predictable order.
 
+`dist` generator accepts an [expr](#expr) `expression` that returns an array of strings whose distinct values will be merged with the `values` array and the count of each value will be added to the `weigths`.
+
+```yaml
+tables:
+- name: people
+  count: 100
+  columns:
+    - name: pets
+      type: dist
+      processor:
+        expression: |
+          [ "dogs", "cats", "birds", "dogs", "cats"]
+```
+        
 The difference between `dist` and [set](#set) lies in how the distribuition is handled. In `set` the values are **randomly selected**, using the weights as probabilities for each selection. In contrast, the `dist` generator ensures that the values are **distributed proportionally** to their weights. In other words, with [set](#set), the outcome can deviate significantly from the weights, while with `dist`, the result will closely match the specified proportions.
 
 #### Multiple Configs
@@ -1337,6 +1353,7 @@ Thanks to the maintainers of the following fantastic packages, whose code this t
 - [martinusso/go-docs](https://github.com/martinusso/go-docs)
 - [expr-lang](https://expr-lang.org/)
 - [nrednav/cuid2 ](https://github.com/nrednav/cuid2)
+- [gosimple/slug](https://github.com/gosimple/slug)
 
 ### Todos
 
