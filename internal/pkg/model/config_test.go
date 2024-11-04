@@ -43,7 +43,7 @@ tables:
           format: "P%03d"
 `
 
-	config, err := LoadConfig(strings.NewReader(y))
+	config, err := LoadConfig(strings.NewReader(y), ".")
 	assert.Nil(t, err)
 
 	exp := Config{
@@ -133,7 +133,7 @@ tables:
         type: const
         processor:
           values: [a, b, c]
-`))
+`), ".")
 	assert.NoError(t, err)
 
 	// Load config2.yaml
@@ -174,7 +174,7 @@ tables:
           source_value: region
           match_column: market
 
-`))
+`), ".")
 	assert.NoError(t, err)
 
 	// Load config3.yaml
@@ -189,7 +189,7 @@ tables:
   - name: market_product
     suppress: true
 
-`))
+`), ".")
 	assert.NoError(t, err)
 
 	// Load expected.yaml
@@ -252,7 +252,7 @@ tables:
           source_value: region
           match_column: market
 
-`))
+`), ".")
 	assert.NoError(t, err)
 
 	// Merge configs

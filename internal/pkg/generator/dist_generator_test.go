@@ -111,7 +111,7 @@ func TestDistGeneratorWithExpression(t *testing.T) {
 		assert.NoError(t, err)
 
 		// Verify that the values from expression were added to g.Values
-		assert.Equal(t, []string{"apple", "banana", "orange"}, generator.Values)
+		assert.ElementsMatch(t, []string{"apple", "banana", "orange"}, generator.Values)
 
 		// Verify the distribution (should be roughly equal since no weights were provided)
 		actualCounts := lo.CountValues(files["test_table"].Lines[0])

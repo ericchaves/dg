@@ -116,10 +116,11 @@ func loadConfigs(filenames []string, tt ui.TimerFunc) (model.Config, error) {
 		}
 		defer file.Close()
 
-		config, err := model.LoadConfig(file)
+		config, err := model.LoadConfig(file, path.Dir(filename))
 		if err != nil {
 			return model.Config{}, fmt.Errorf("loading config from %s: %w", filename, err)
 		}
+
 		mergedConfig = model.MergeConfig(mergedConfig, config)
 	}
 

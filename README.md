@@ -33,7 +33,7 @@ A fast data generator that produces CSV files from generated relational data.
      - [pick](#pick)
      - [lookup](#lookup)
      - [dist](#dist)
-     - [multiple configs](#multiple-configs)
+     - [breaking configuration files](#breaking-configuration-files)
 1. [Inputs](#inputs)
    - [csv](#csv)
 1. [Functions](#functions)
@@ -1134,40 +1134,86 @@ tables:
         
 The difference between `dist` and [set](#set) lies in how the distribuition is handled. In `set` the values are **randomly selected**, using the weights as probabilities for each selection. In contrast, the `dist` generator ensures that the values are **distributed proportionally** to their weights. In other words, with [set](#set), the outcome can deviate significantly from the weights, while with `dist`, the result will closely match the specified proportions.
 
-#### Multiple Configs
+#### Breaking configuration files
 
-In complex databases where there is a large number of tables with multiple cardinalities and dependencies, the config file may become too big and hard to maintain, particularly if the database is in a stage where changes are frequent. In this case, it may be desirable to break the config into a set of files. When running `dg`, you can pass multiple config files by repeating the config flag multiple times, like this:
+In complex databases where there is a large number of tables with multiple cardinalities and dependencies, the config file may become too big and hard to maintain, particularly if the database is in a stage where changes are frequent. There are two ways to break down your configuration into multiple files:
 
-```bash
-dg -c ./path/to/base.yaml -c ./path/to/extra-tables.yaml -c ./path/to/base-override.yaml -o ./output/
+1. Using the `extends` section in your YAML files
+2. Using multiple `-c` flags when running `dg`
+
+##### Using extends
+
+The `extends` section allows a configuration file to inherit and override settings from other files. For example:
+
+```yaml
+# base.yaml
+tables:
+  - name: users
+    columns:
+      - name: id
+        type: inc
+
+# extra.yaml
+extends:
+  - base.yaml
+tables:
+  - name: users
+    count: 1000  # Override just the count
 ```
 
-In this case, `dg` will merge all config files and use the result to generate the files. The merge logic is very basic but has some tricky points and may be hard to debug, so it is advised to plan this carefully.
+When using `extends`:
+- Files are processed recursively in the order they appear
+- Paths in `extends` are relative to the current file's location
+- Later configurations override earlier ones using the same merge rules as multiple configs
 
-- The list of config files is combined in pairs, in the order declared from left to right.
-- Each input item in the input list is compared from left (base) to right (incoming) by the value of its name.
-  - If the value is the same, the entire "base" item is replaced by the "incoming" item.
-  - If the incoming item is not present in the base input list, it is added.
-- Then, each table is compared from left (base) to right (incoming) by their name:
-  - If the table names match:
-    - The incoming table count **always overrides** the base table count. If the incoming table count is omitted, the count value of `0` is assumed.
-    - The incoming table suppress flag **always overrides** the base suppress flag. If the incoming suppress flag is omitted, the default value is `false`.
-    - If the incoming table columns are omitted, the base columns are used as-is.
-    - If the incoming table columns are declared, the base columns are replaced entirely by the incoming columns without any comparison or merging of individual column items.
-  - If the incoming table is not present in the base config, it is added.
+##### Using Multiple Config Files
 
-These rules are designed to make it easier to plan the merging of multiple configs:
+You can also pass multiple config files by repeating the config flag:
 
-- You can add or replace input items, but not remove them.
-- You can add or update tables, but not remove them.
-- You can declare the table spec in base config files, and in other config files, you can just declare their name and update the count or suppress flag.
-- You can redefine the columns of a previously declared table, but only in its entirety. Columns are never merged on a per-item basis.
+```bash
+dg -c ./path/to/base.yaml -c ./path/to/extra-tables.yaml -c ./path/to/overrides.yaml -o ./output/
+```
 
-In the example `dg -c ./path/to/base-tables.yaml -c ./path/to/extra-tables.yaml -c ./path/to/overrides.yaml -o ./output/`, first `base-tables.yaml` will be merged with `extra-tables.yaml`, and then the result will be merged with `overrides.yaml`.
+The merge logic follows these rules when combining configurations:
 
-In this example, we could define two sets of tables in different files (`base.yaml` and `extra-tables.yaml`). The base.yaml file would contain a set of tables that are related either by subject or because they reference each other. The `extra-tables.yaml` file would contain a second set of tables, perhaps because they were added to the database later or because they don't depend on any tables from the base.yaml.
+- Files are merged in pairs from left to right
+- For input items:
+  - Matching names: incoming item completely replaces base item
+  - New items are added
+- For tables:
+  - Matching names:
+    - Count: incoming overrides base (default 0)
+    - Suppress flag: incoming overrides base (default false) 
+    - Columns: either kept as-is or completely replaced
+  - New tables are added
 
-Each config file would specify the number of rows to be generated (the count value for each table), and since each file would have a small number of tables, it would be easier to debug and test each file independently. Then, in the `overrides.yaml` file, we can redefine some tables from either file with higher count values, but without redeclaring their columns. This way, when we run all three config files together, we effectively control the output without needing to maintain multiple copies of the config files, which would be harder to manage.
+These rules make it easier to:
+- Add/replace inputs and tables (but not remove them)
+- Override counts and suppress flags without redefining columns
+- Split related tables into separate files
+- Have override files that just modify counts/flags
+
+For example:
+```yaml
+# base.yaml - Core tables
+tables:
+  - name: users
+    columns: [...]
+
+# extra.yaml - Additional tables
+tables: 
+  - name: orders
+    columns: [...]
+
+# override.yaml - Just modify counts
+tables:
+  - name: users
+    count: 1000
+  - name: orders 
+    count: 5000
+```
+
+You can use both approaches together - files specified with `-c` can contain `extends` sections, giving you flexible ways to organize your configurations.
 
 ### Inputs
 

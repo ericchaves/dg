@@ -3,6 +3,8 @@ package model
 import (
 	"fmt"
 	"io"
+	"os"
+	"path"
 
 	"github.com/samber/lo"
 	"gopkg.in/yaml.v3"
@@ -10,8 +12,9 @@ import (
 
 // Config represents the entire contents of a config file.
 type Config struct {
-	Tables []Table `yaml:"tables"`
-	Inputs []Input `yaml:"inputs"`
+	Tables  []Table  `yaml:"tables"`
+	Inputs  []Input  `yaml:"inputs"`
+	Extends []string `yaml:"extends"`
 }
 
 // Table represents the instructions to create one CSV file.
@@ -39,10 +42,34 @@ type Input struct {
 }
 
 // Load config from a file
-func LoadConfig(r io.Reader) (Config, error) {
+func LoadConfig(r io.Reader, baseDir string) (Config, error) {
 	var c Config
 	if err := yaml.NewDecoder(r).Decode(&c); err != nil {
 		return Config{}, fmt.Errorf("parsing file: %w", err)
+	}
+
+	// Process extends section if it exists
+	if len(c.Extends) > 0 {
+		var mergedConfig Config
+		for _, extendFile := range c.Extends {
+			fullPath := path.Join(baseDir, extendFile)
+			extFile, err := os.Open(fullPath)
+			if err != nil {
+				return Config{}, fmt.Errorf("opening extended file %s: %w", fullPath, err)
+			}
+			defer extFile.Close()
+
+			// Recursively load extended config
+			extConfig, err := LoadConfig(extFile, path.Dir(fullPath))
+			if err != nil {
+				return Config{}, fmt.Errorf("loading extended config from %s: %w", fullPath, err)
+			}
+
+			// Merge the extended config with current merged config
+			mergedConfig = MergeConfig(mergedConfig, extConfig)
+		}
+		// Finally merge with the current config
+		c = MergeConfig(mergedConfig, c)
 	}
 
 	return c, nil
