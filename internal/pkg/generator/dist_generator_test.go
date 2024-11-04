@@ -169,7 +169,7 @@ func TestDistGeneratorErrors(t *testing.T) {
 
 		err := generator.Generate(model.Table{}, model.Column{}, nil)
 		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "either values or expression must be provided")
+		assert.Contains(t, err.Error(), "values slice is empty")
 	})
 
 	t.Run("Empty values but with expression", func(t *testing.T) {

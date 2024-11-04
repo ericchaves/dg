@@ -17,10 +17,6 @@ type DistGenerator struct {
 
 func (g *DistGenerator) Generate(t model.Table, c model.Column, files map[string]model.CSVFile) error {
 
-	if len(g.Values) == 0 && g.Expression == "" {
-		return fmt.Errorf("either values or expression must be provided")
-	}
-
 	if g.Expression != "" {
 		ec := &ExprContext{Files: files}
 		env := ec.makeEnv()
@@ -50,6 +46,10 @@ func (g *DistGenerator) Generate(t model.Table, c model.Column, files map[string
 			g.Values = append(g.Values, value)
 			g.Weights = append(g.Weights, count)
 		}
+	}
+
+	if len(g.Values) == 0 {
+		return fmt.Errorf("values slice is empty")
 	}
 
 	if retFile, ok := files[t.Name]; t.Count <= 0 && ok {
