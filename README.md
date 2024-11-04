@@ -30,6 +30,7 @@ A fast data generator that produces CSV files from generated relational data.
      - [case](#case)
      - [fk](#fk)
      - [map](#map)
+     - [pick](#pick)
      - [lookup](#lookup)
      - [dist](#dist)
      - [multiple configs](#multiple-configs)
@@ -1008,6 +1009,31 @@ The following custom variables are available for use in expressions:
 ```
 If you want to count values from another column of the current table you can ommit `table` parameter.
 You can use `format` to control the formatted output value. 
+
+### pick
+
+The `pick` generator retrieves values from `source_value` by matching the `match_column` in the current table with the `source_column` in the `source_table`.
+
+The `Unique` parameter is optional; when set to `true`, the generator ensures each value is used only once. If `Unique` is `false` (the default), the generator will cycle through the available values in the source, reusing them as needed to populate the target table
+
+**Example** YAML configuration:
+
+```yaml
+- name: unique_assignment
+  type: link
+  processor:
+    source_table: source_table
+    source_column: unique_ids
+    source_value: value_column
+    match_column: match_column
+    unique: true
+```
+
+In this example, the generator will:
+1. Look up values in the 'source_table'.
+2. Match the 'match_column' in the current table with the 'source_column' in the source table.
+3. When a match is found, it will assign the corresponding value from the 'source_value' column.
+4. Each value from 'source_value' is used only once.
 
 #### lookup
 

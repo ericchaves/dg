@@ -249,15 +249,6 @@ func generateTable(t model.Table, files map[string]model.CSVFile, tt ui.TimerFun
 				return fmt.Errorf("running set process for %s.%s: %w", t.Name, col.Name, err)
 			}
 
-		// case "const":
-		// 	var g generator.ConstGenerator
-		// 	if err := col.Generator.UnmarshalFunc(&g); err != nil {
-		// 		return fmt.Errorf("parsing const process for %s.%s: %w", t.Name, col.Name, err)
-		// 	}
-		// 	if err := g.Generate(t, col, files); err != nil {
-		// 		return fmt.Errorf("running const process for %s.%s: %w", t.Name, col.Name, err)
-		// 	}
-
 		case "inc":
 			var g generator.IncGenerator
 			if err := col.Generator.UnmarshalFunc(&g); err != nil {
@@ -337,6 +328,15 @@ func generateTable(t model.Table, files map[string]model.CSVFile, tt ui.TimerFun
 			}
 			if err := g.Generate(t, col, files); err != nil {
 				return fmt.Errorf("running map process for %s.%s: %w", t.Name, col.Name, err)
+			}
+
+		case "pick":
+			var g generator.PickGenerator
+			if err := col.Generator.UnmarshalFunc(&g); err != nil {
+				return fmt.Errorf("parsing once process for %s: %w", col.Name, err)
+			}
+			if err := g.Generate(t, col, files); err != nil {
+				return fmt.Errorf("running once process for %s.%s: %w", t.Name, col.Name, err)
 			}
 
 		case "lookup":
